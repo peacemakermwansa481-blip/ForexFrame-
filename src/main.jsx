@@ -3,6 +3,27 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import { supabase } from "./supabase";
 
+const emptyTrade = {
+  trade_date: new Date().toISOString().slice(0, 16),
+  instrument: "",
+  direction: "Buy",
+  timeframe: "H1",
+  entry_price: "",
+  stop_price: "",
+  target_price: "",
+  position_size: "",
+  simulated_risk_percent: "",
+  simulated_pnl: "",
+  r_multiple: "",
+  outcome: "Win",
+  strategy: "",
+  entry_reason: "",
+  exit_reason: "",
+  emotion: "",
+  mistake: "",
+  lesson: "",
+};
+
 function AuthScreen() {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -21,9 +42,7 @@ function AuthScreen() {
         password,
       });
 
-      if (error) {
-        setMessage(error.message);
-      }
+      if (error) setMessage(error.message);
     } else {
       const { error } = await supabase.auth.signUp({
         email,
@@ -33,7 +52,7 @@ function AuthScreen() {
       if (error) {
         setMessage(error.message);
       } else {
-        setMessage("Account created. You can now log in.");
+        setMessage("Account created. Check your email to confirm your account.");
         setMode("login");
       }
     }
@@ -52,7 +71,7 @@ function AuthScreen() {
         <p className="muted">
           {mode === "login"
             ? "Log in to review your simulated trading journal."
-            : "Create your ForexFrame journal and start tracking your learning."}
+            : "Create your journal and start tracking your learning."}
         </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -106,10 +125,383 @@ function AuthScreen() {
   );
 }
 
+function AddTradeModal({ onClose, onSaved }) {
+  const [trade, setTrade] = useState(emptyTrade);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  function updateField(field, value) {
+    setTrade((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function handleSave(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setError("Your session has expired. Please log in again.");
+      setSaving(false);
+      return;
+    }
+
+    const numericFields = [
+      "entry_price",
+      "stop_price",
+      "target_price",
+      "position_size",
+      "simulated_risk_percent",
+      "simulated_pnl",
+      "r_multiple",
+    ];
+
+    const payload = {
+      ...trade,
+      user_id: user.id,
+      trade_date: new Date(trade.trade_date).toISOString(),
+    };
+
+    numericFields.forEach((field) => {
+      payload[field] =
+        trade[field] === "" ? null : Number(trade[field]);
+    });
+
+    const { error: insertError } = await supabase
+      .from("trades")
+      .insert(payload);
+
+    if (insertError) {
+      setError(insertError.message);
+      setSaving(false);
+      return;
+    }
+
+    setSaving(false);
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <div className="modal-backdrop">
+      <div className="trade-modal">
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">JOURNAL ENTRY</p>
+            <h2>Add Simulated Trade</h2>
+          </div>
+
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSave} className="trade-form">
+          <div className="form-grid">
+            <label>
+              Date & Time
+              <input
+                type="datetime-local"
+                value={trade.trade_date}
+                onChange={(e) =>
+                  updateField("trade_date", e.target.value)
+                }
+                required
+              />
+            </label>
+
+            <label>
+              Instrument
+              <input
+                type="text"
+                placeholder="e.g. XAU/USD"
+                value={trade.instrument}
+                onChange={(e) =>
+                  updateField("instrument", e.target.value)
+                }
+                required
+              />
+            </label>
+
+            <label>
+              Direction
+              <select
+                value={trade.direction}
+                onChange={(e) =>
+                  updateField("direction", e.target.value)
+                }
+              >
+                <option>Buy</option>
+                <option>Sell</option>
+              </select>
+            </label>
+
+            <label>
+              Timeframe
+              <select
+                value={trade.timeframe}
+                onChange={(e) =>
+                  updateField("timeframe", e.target.value)
+                }
+              >
+                <option>M1</option>
+                <option>M5</option>
+                <option>M15</option>
+                <option>M30</option>
+                <option>H1</option>
+                <option>H4</option>
+                <option>D1</option>
+              </select>
+            </label>
+
+            <label>
+              Entry Price
+              <input
+                type="number"
+                step="any"
+                value={trade.entry_price}
+                onChange={(e) =>
+                  updateField("entry_price", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Stop Price
+              <input
+                type="number"
+                step="any"
+                value={trade.stop_price}
+                onChange={(e) =>
+                  updateField("stop_price", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Target Price
+              <input
+                type="number"
+                step="any"
+                value={trade.target_price}
+                onChange={(e) =>
+                  updateField("target_price", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Position Size
+              <input
+                type="number"
+                step="any"
+                value={trade.position_size}
+                onChange={(e) =>
+                  updateField("position_size", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Simulated Risk %
+              <input
+                type="number"
+                step="any"
+                value={trade.simulated_risk_percent}
+                onChange={(e) =>
+                  updateField("simulated_risk_percent", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Simulated P/L
+              <input
+                type="number"
+                step="any"
+                value={trade.simulated_pnl}
+                onChange={(e) =>
+                  updateField("simulated_pnl", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              R-Multiple
+              <input
+                type="number"
+                step="any"
+                value={trade.r_multiple}
+                onChange={(e) =>
+                  updateField("r_multiple", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Outcome
+              <select
+                value={trade.outcome}
+                onChange={(e) =>
+                  updateField("outcome", e.target.value)
+                }
+              >
+                <option>Win</option>
+                <option>Loss</option>
+                <option>Breakeven</option>
+              </select>
+            </label>
+
+            <label className="full-span">
+              Strategy / Setup
+              <input
+                type="text"
+                placeholder="e.g. Market Structure"
+                value={trade.strategy}
+                onChange={(e) =>
+                  updateField("strategy", e.target.value)
+                }
+              />
+            </label>
+
+            <label className="full-span">
+              Entry Reason
+              <textarea
+                placeholder="Why did you take this simulated trade?"
+                value={trade.entry_reason}
+                onChange={(e) =>
+                  updateField("entry_reason", e.target.value)
+                }
+              />
+            </label>
+
+            <label className="full-span">
+              Exit Reason
+              <textarea
+                placeholder="Why did you exit?"
+                value={trade.exit_reason}
+                onChange={(e) =>
+                  updateField("exit_reason", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Emotion
+              <input
+                type="text"
+                placeholder="Calm, nervous, confident..."
+                value={trade.emotion}
+                onChange={(e) =>
+                  updateField("emotion", e.target.value)
+                }
+              />
+            </label>
+
+            <label>
+              Mistake
+              <input
+                type="text"
+                placeholder="Optional"
+                value={trade.mistake}
+                onChange={(e) =>
+                  updateField("mistake", e.target.value)
+                }
+              />
+            </label>
+
+            <label className="full-span">
+              Lesson
+              <textarea
+                placeholder="What did you learn?"
+                value={trade.lesson}
+                onChange={(e) =>
+                  updateField("lesson", e.target.value)
+                }
+              />
+            </label>
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save Simulated Trade"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ user }) {
+  const [trades, setTrades] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [loadingTrades, setLoadingTrades] = useState(true);
+
+  async function loadTrades() {
+    setLoadingTrades(true);
+
+    const { data, error } = await supabase
+      .from("trades")
+      .select("*")
+      .order("trade_date", { ascending: false });
+
+    if (!error) {
+      setTrades(data || []);
+    }
+
+    setLoadingTrades(false);
+  }
+
+  useEffect(() => {
+    loadTrades();
+  }, []);
+
   async function handleLogout() {
     await supabase.auth.signOut();
   }
+
+  const totalTrades = trades.length;
+
+  const wins = trades.filter(
+    (trade) => trade.outcome?.toLowerCase() === "win"
+  ).length;
+
+  const winRate =
+    totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0;
+
+  const simulatedPL = trades.reduce(
+    (total, trade) => total + Number(trade.simulated_pnl || 0),
+    0
+  );
+
+  const averageR =
+    totalTrades > 0
+      ? trades.reduce(
+          (total, trade) => total + Number(trade.r_multiple || 0),
+          0
+        ) / totalTrades
+      : 0;
 
   return (
     <div className="app">
@@ -121,6 +513,7 @@ function Dashboard({ user }) {
 
         <div className="profile-area">
           <span className="user-email">{user.email}</span>
+
           <button className="profile" onClick={handleLogout}>
             {user.email?.charAt(0).toUpperCase() || "U"}
           </button>
@@ -138,28 +531,33 @@ function Dashboard({ user }) {
             </p>
           </div>
 
-          <button className="primary-button">+ Add Trade</button>
+          <button
+            className="primary-button"
+            onClick={() => setShowModal(true)}
+          >
+            + Add Trade
+          </button>
         </section>
 
         <section className="stats-grid">
           <div className="card">
             <span>Total Trades</span>
-            <strong>0</strong>
+            <strong>{totalTrades}</strong>
           </div>
 
           <div className="card">
             <span>Win Rate</span>
-            <strong>0%</strong>
+            <strong>{winRate}%</strong>
           </div>
 
           <div className="card">
             <span>Simulated P/L</span>
-            <strong>0.00</strong>
+            <strong>{simulatedPL.toFixed(2)}</strong>
           </div>
 
           <div className="card">
             <span>Average R</span>
-            <strong>0.00R</strong>
+            <strong>{averageR.toFixed(2)}R</strong>
           </div>
         </section>
 
@@ -169,17 +567,19 @@ function Dashboard({ user }) {
               <div>
                 <h2>Performance</h2>
                 <p className="muted">
-                  Your equity curve will appear here.
+                  Your performance data will appear here.
                 </p>
               </div>
 
-              <span className="badge">No data</span>
+              <span className="badge">
+                {totalTrades === 0 ? "No data" : `${totalTrades} trades`}
+              </span>
             </div>
 
             <div className="empty-chart">
               <div className="chart-line"></div>
               <p>
-                Start logging simulated trades to see your performance.
+                Your equity curve will be added in the next step.
               </p>
             </div>
           </div>
@@ -192,14 +592,47 @@ function Dashboard({ user }) {
               </div>
             </div>
 
-            <div className="empty-state">
-              <div className="empty-icon">＋</div>
-              <p>No trades recorded yet.</p>
-              <span>Add your first simulated trade to begin.</span>
-            </div>
+            {loadingTrades ? (
+              <div className="empty-state">
+                <p>Loading trades...</p>
+              </div>
+            ) : trades.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">＋</div>
+                <p>No trades recorded yet.</p>
+                <span>Add your first simulated trade to begin.</span>
+              </div>
+            ) : (
+              <div className="trade-list">
+                {trades.slice(0, 5).map((trade) => (
+                  <div className="trade-row" key={trade.id}>
+                    <div>
+                      <strong>{trade.instrument}</strong>
+                      <span>
+                        {trade.direction} · {trade.timeframe}
+                      </span>
+                    </div>
+
+                    <div className="trade-result">
+                      <strong>{trade.outcome}</strong>
+                      <span>
+                        {Number(trade.simulated_pnl || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>
+
+      {showModal && (
+        <AddTradeModal
+          onClose={() => setShowModal(false)}
+          onSaved={loadTrades}
+        />
+      )}
     </div>
   );
 }
