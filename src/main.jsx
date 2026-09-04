@@ -548,6 +548,52 @@ function AddTradeModal({ onClose, onSaved }) {
   );
 }
 
+function calculatePerformanceMetrics(trades) {
+  if (trades.length === 0) {
+    return {
+      bestTrade: 0,
+      worstTrade: 0,
+      maxDrawdown: 0,
+    };
+  }
+
+  const profits = trades.map((trade) =>
+    Number(trade.simulated_pnl || 0)
+  );
+
+  const bestTrade = Math.max(...profits);
+  const worstTrade = Math.min(...profits);
+
+  const orderedTrades = [...trades].sort(
+    (a, b) =>
+      new Date(a.trade_date) - new Date(b.trade_date)
+  );
+
+  let runningTotal = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+
+  orderedTrades.forEach((trade) => {
+    runningTotal += Number(trade.simulated_pnl || 0);
+
+    if (runningTotal > peak) {
+      peak = runningTotal;
+    }
+
+    const drawdown = peak - runningTotal;
+
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  });
+
+  return {
+    bestTrade,
+    worstTrade,
+    maxDrawdown,
+  };
+}
+
 function Dashboard({ user }) {
   const [trades, setTrades] = useState([]);
   const [showModal, setShowModal] = useState(false);
