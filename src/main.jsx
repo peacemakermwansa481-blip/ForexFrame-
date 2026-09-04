@@ -671,12 +671,7 @@ function Dashboard({ user }) {
               </span>
             </div>
 
-            <div className="empty-chart">
-              <div className="chart-line"></div>
-              <p>
-                Your equity curve will be added in the next step.
-              </p>
-            </div>
+            <PerformanceChart trades={trades} />
           </div>
 
           <div className="card">
