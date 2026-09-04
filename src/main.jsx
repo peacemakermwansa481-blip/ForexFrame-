@@ -710,6 +710,11 @@ function Dashboard({ user }) {
   <strong>{performanceMetrics.bestTrade.toFixed(2)}</strong>
 </div>
 
+        <div className="card">
+  <span>Worst Trade</span>
+  <strong>{performanceMetrics.worstTrade.toFixed(2)}</strong>
+</div>
+
         <section className="content-grid">
           <div className="card large-card">
             <div className="card-header">
