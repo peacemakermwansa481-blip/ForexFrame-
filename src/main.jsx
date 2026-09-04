@@ -715,6 +715,11 @@ function Dashboard({ user }) {
   <strong>{performanceMetrics.worstTrade.toFixed(2)}</strong>
 </div>
 
+        <div className="card">
+  <span>Max Drawdown</span>
+  <strong>{performanceMetrics.maxDrawdown.toFixed(2)}</strong>
+</div>
+
         <section className="content-grid">
           <div className="card large-card">
             <div className="card-header">
