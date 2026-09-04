@@ -704,6 +704,11 @@ function Dashboard({ user }) {
             <strong>{averageR.toFixed(2)}R</strong>
           </div>
         </section>
+        
+          <div className="card">
+  <span>Best Trade</span>
+  <strong>{performanceMetrics.bestTrade.toFixed(2)}</strong>
+</div>
 
         <section className="content-grid">
           <div className="card large-card">
