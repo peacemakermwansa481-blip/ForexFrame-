@@ -703,6 +703,7 @@ function Dashboard({ user }) {
             <span>Average R</span>
             <strong>{averageR.toFixed(2)}R</strong>
           </div>
+          </section>
         
           <div className="card">
   <span>Best Trade</span>
