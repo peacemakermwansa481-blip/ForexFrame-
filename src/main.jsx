@@ -643,6 +643,9 @@ function Dashboard({ user }) {
           0
         ) / totalTrades
       : 0;
+  const performanceMetrics =
+    calculatePerformanceMetrics(trades);
+                                
 
   return (
     <div className="app">
