@@ -769,6 +769,7 @@ function Dashboard({ user }) {
                     </div>
 
                     <div
+                      <div
   className={`trade-result ${
     trade.outcome?.toLowerCase() === "loss"
       ? "loss"
@@ -780,7 +781,8 @@ function Dashboard({ user }) {
     {Number(trade.simulated_pnl || 0).toFixed(2)}
   </span>
 </div>
-                    </div>
+  
+                      </div>
                   </div>
                 ))}
               </div>
