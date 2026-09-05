@@ -557,13 +557,6 @@ function calculatePerformanceMetrics(trades) {
     };
   }
 
-  const profits = trades.map((trade) =>
-    Number(trade.simulated_pnl || 0)
-  );
-
-  const bestTrade = Math.max(...profits);
-  const worstTrade = Math.min(...profits);
-
   const orderedTrades = [...trades].sort(
     (a, b) =>
       new Date(a.trade_date) - new Date(b.trade_date)
@@ -573,23 +566,23 @@ function calculatePerformanceMetrics(trades) {
   let peak = 0;
   let maxDrawdown = 0;
 
-  orderedTrades.forEach((trade) => {
-    runningTotal += Number(trade.simulated_pnl || 0);
+  const profits = orderedTrades.map((trade) =>
+    Number(trade.simulated_pnl || 0)
+  );
 
-    if (runningTotal > peak) {
-      peak = runningTotal;
-    }
+  profits.forEach((profit) => {
+    runningTotal += profit;
+
+    peak = Math.max(peak, runningTotal);
 
     const drawdown = peak - runningTotal;
 
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown;
-    }
+    maxDrawdown = Math.max(maxDrawdown, drawdown);
   });
 
   return {
-    bestTrade,
-    worstTrade,
+    bestTrade: Math.max(...profits),
+    worstTrade: Math.min(...profits),
     maxDrawdown,
   };
 }
