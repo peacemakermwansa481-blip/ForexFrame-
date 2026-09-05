@@ -768,11 +768,18 @@ function Dashboard({ user }) {
                       </span>
                     </div>
 
-                    <div className="trade-result">
-                      <strong>{trade.outcome}</strong>
-                      <span>
-                        {Number(trade.simulated_pnl || 0).toFixed(2)}
-                      </span>
+                    <div
+  className={`trade-result ${
+    trade.outcome?.toLowerCase() === "loss"
+      ? "loss"
+      : "win"
+  }`}
+>
+  <strong>{trade.outcome}</strong>
+  <span>
+    {Number(trade.simulated_pnl || 0).toFixed(2)}
+  </span>
+</div>
                     </div>
                   </div>
                 ))}
