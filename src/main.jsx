@@ -263,10 +263,18 @@ function AddTradeModal({ onClose, onSaved }) {
       trade_date: new Date(trade.trade_date).toISOString(),
     };
 
-    numericFields.forEach((field) => {
-      payload[field] =
-        trade[field] === "" ? null : Number(trade[field]);
-    });
+     numericFields.forEach((field) => {
+  payload[field] =
+    trade[field] === "" ? null : Number(trade[field]);
+});
+
+if (payload.outcome?.toLowerCase() === "loss") {
+  payload.simulated_pnl = -Math.abs(payload.simulated_pnl || 0);
+}
+
+if (payload.outcome?.toLowerCase() === "win") {
+  payload.simulated_pnl = Math.abs(payload.simulated_pnl || 0);
+}
 
     const { error: insertError } = await supabase
       .from("trades")
