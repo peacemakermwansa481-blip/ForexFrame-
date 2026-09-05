@@ -768,7 +768,6 @@ function Dashboard({ user }) {
                       </span>
                     </div>
 
-                    <div
                       <div
   className={`trade-result ${
     trade.outcome?.toLowerCase() === "loss"
