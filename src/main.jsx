@@ -703,7 +703,6 @@ function Dashboard({ user }) {
             <span>Average R</span>
             <strong>{averageR.toFixed(2)}R</strong>
           </div>
-          </section>
         
           <div className="card">
   <span>Best Trade</span>
@@ -719,6 +718,7 @@ function Dashboard({ user }) {
   <span>Max Drawdown</span>
   <strong>{performanceMetrics.maxDrawdown.toFixed(2)}</strong>
 </div>
+       </section>
 
         <section className="content-grid">
           <div className="card large-card">
