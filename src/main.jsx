@@ -726,7 +726,7 @@ function Dashboard({ user }) {
               <div>
                 <h2>Performance</h2>
                 <p className="muted">
-                  Your performance data will appear here.
+                  Track your simulated equity curve over time.
                 </p>
               </div>
 
