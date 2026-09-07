@@ -758,7 +758,8 @@ function Dashboard({ user }) {
                 <span>Add your first simulated trade to begin.</span>
               </div>
             ) : (
-              <div className="trade-list">
+      
+             <div className="trade-list">
   {trades.slice(0, 5).map((trade) => {
     const pnl = Number(trade.simulated_pnl || 0);
     const isLoss = trade.outcome?.toLowerCase() === "loss";
@@ -773,6 +774,17 @@ function Dashboard({ user }) {
           </span>
         </div>
 
+        <div className={`trade-result ${isLoss ? "loss" : "win"}`}>
+          <strong>{trade.outcome}</strong>
+          <span>
+            {displayPnl > 0 ? "+" : ""}
+            {displayPnl.toFixed(2)}
+          </span>
+        </div>
+      </div>
+    );
+  })}
+</div>
         <div className={`trade-result ${isLoss ? "loss" : "win"}`}>
           <strong>{trade.outcome}</strong>
           <span>
