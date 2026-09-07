@@ -770,10 +770,12 @@ function Dashboard({ user }) {
 
                       <div
   className={`trade-result ${
-    trade.outcome?.toLowerCase() === "loss"
-      ? "loss"
-      : "win"
-  }`}
+  trade.outcome?.toLowerCase() === "loss"
+    ? "loss"
+    : trade.outcome?.toLowerCase() === "win"
+    ? "win"
+    : "breakeven"
+}`}
 >
   <strong>{trade.outcome}</strong>
   <span>
