@@ -26,22 +26,6 @@ const emptyTrade = {
 
 
 
-.trade-result span {
-  color: inherit;
-}
-
-.trade-result.win {
-  color: #22c55e;
-}
-
-.trade-result.loss {
-  color: #ef4444;
-}
-
-.trade-result.breakeven {
-  color: #94a3b8;
-}
-                          }
 
 function AuthScreen() {
   const [mode, setMode] = useState("login");
