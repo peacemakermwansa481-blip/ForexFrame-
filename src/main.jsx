@@ -644,8 +644,8 @@ function Dashboard({ user }) {
               </span>
             </div>
 
-           <div className="empty-chart">
-  <p>Performance chart will appear here.</p>
+           <div className="real-chart">
+  <p>Performance chart test — {trades.length} trades</p>
 </div>
           </div>
 
