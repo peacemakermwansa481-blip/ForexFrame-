@@ -764,7 +764,7 @@ function Dashboard({ user }) {
                     <div>
                       <strong>{trade.instrument}</strong>
                       <span>
-                        {trade.direction} 路 {trade.timeframe}
+                        {trade.direction} - {trade.timeframe}
                       </span>
                     </div>
 
