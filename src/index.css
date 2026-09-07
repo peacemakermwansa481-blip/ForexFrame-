@@ -360,12 +360,23 @@ label {
 }
 
 .trade-result strong {
-  color: #22c55e;
   font-size: 12px;
 }
 
 .trade-result span {
+  color: inherit;
+}
+
+.trade-result.win {
   color: #22c55e;
+}
+
+.trade-result.loss {
+  color: #ef4444;
+}
+
+.trade-result.breakeven {
+  color: #94a3b8;
 }
 
 /* ---------- AUTH ---------- */
