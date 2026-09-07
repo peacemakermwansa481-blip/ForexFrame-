@@ -644,7 +644,7 @@ function Dashboard({ user }) {
               </span>
             </div>
 
-            <PerformanceChart trades={trades} />
+           <div style={{ color: "white", padding: "20px" }}>Chart test</div>
           </div>
 
           <div className="card">
@@ -737,7 +737,7 @@ function App() {
     );
   }
 
-  return session ? <div style={{ color: "white", padding: "40px" }}>Dashboard test</div> : <AuthScreen />;
+  return session ? <Dashboard user={session.user} /> : <AuthScreen />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
