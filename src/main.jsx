@@ -24,99 +24,25 @@ const emptyTrade = {
   lesson: "",
 };
 
-function PerformanceChart({ trades }) {
-  if (trades.length === 0) {
-    return (
-      <div className="empty-chart">
-        <div className="chart-line"></div>
-        <p>Start logging simulated trades to see your performance.</p>
-      </div>
-    );
-  }
+.trade-result strong {
+  font-size: 12px;
+}
 
-  const orderedTrades = [...trades].sort(
-    (a, b) => new Date(a.trade_date) - new Date(b.trade_date)
-  );
+.trade-result span {
+  color: inherit;
+}
 
-  let runningTotal = 0;
+.trade-result.win {
+  color: #22c55e;
+}
 
-  const points = orderedTrades.map((trade) => {
-    runningTotal += Number(trade.simulated_pnl || 0);
+.trade-result.loss {
+  color: #ef4444;
+}
 
-    return {
-      id: trade.id,
-      value: runningTotal,
-    };
-  });
-
-  const values = points.map((point) => point.value);
-  const minValue = Math.min(0, ...values);
-  const maxValue = Math.max(0, ...values);
-  const range = maxValue - minValue || 1;
-
-  const width = 700;
-  const height = 260;
-  const padding = 25;
-
-  const chartPoints = points.map((point, index) => {
-    const x =
-      points.length === 1
-        ? width / 2
-        : padding +
-          (index / (points.length - 1)) * (width - padding * 2);
-
-    const y =
-      height -
-      padding -
-      ((point.value - minValue) / range) *
-        (height - padding * 2);
-
-    return `${x},${y}`;
-  });
-
-  return (
-    <div className="real-chart">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-      >
-        <line
-          x1="25"
-          y1={height - padding}
-          x2={width - padding}
-          y2={height - padding}
-          className="chart-zero-line"
-        />
-
-        <polyline
-          points={chartPoints.join(" ")}
-          className="performance-line"
-        />
-
-        {points.map((point, index) => {
-          const [x, y] = chartPoints[index].split(",");
-
-          return (
-            <circle
-              key={point.id}
-              cx={x}
-              cy={y}
-              r="4"
-              className="chart-point"
-            />
-          );
-        })}
-      </svg>
-
-      <div className="chart-labels">
-        <span>0</span>
-        <span>
-          {runningTotal >= 0 ? "+" : ""}
-          {runningTotal.toFixed(2)}
-        </span>
-      </div>
-    </div>
-  );
+.trade-result.breakeven {
+  color: #94a3b8;
+}
                           }
 
 function AuthScreen() {
