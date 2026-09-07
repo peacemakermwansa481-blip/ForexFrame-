@@ -760,33 +760,33 @@ function Dashboard({ user }) {
             ) : (
       
             ) : (
-  <div className="trade-list">
-    {trades.slice(0, 5).map((trade) => {
-      const pnl = Number(trade.simulated_pnl || 0);
-      const isLoss = trade.outcome?.toLowerCase() === "loss";
-      const displayPnl = isLoss ? -Math.abs(pnl) : Math.abs(pnl);
+         <div className="trade-list">
+           {trades.slice(0, 5).map((trade) => {
+             const pnl = Number(trade.simulated_pnl || 0);
+             const isLoss = trade.outcome?.toLowerCase() === "loss";
+             const displayPnl = isLoss ? -Math.abs(pnl) : Math.abs(pnl);
 
-      return (
-        <div className="trade-row" key={trade.id}>
-          <div>
-            <strong>{trade.instrument}</strong>
-            <span>
-              {trade.direction} · {trade.timeframe}
-            </span>
-          </div>
+             return (
+               <div className="trade-row" key={trade.id}>
+                 <div>
+                   <strong>{trade.instrument}</strong>
+                   <span>
+                     {trade.direction} · {trade.timeframe}
+                  </span>
+                 </div>
 
-          <div className={`trade-result ${isLoss ? "loss" : "win"}`}>
-            <strong>{trade.outcome}</strong>
-            <span>
-              {displayPnl > 0 ? "+" : ""}
-              {displayPnl.toFixed(2)}
-            </span>
-          </div>
-        </div>
-      );
-    })}
-  </div>
-)}
+                 <div className={`trade-result ${isLoss ? "loss" : "win"}`}>
+                 <strong>{trade.outcome}</strong>
+                   <span>
+                     {displayPnl > 0 ? "+" : ""}
+                     {displayPnl.toFixed(2)}
+                   </span>
+                 </div>
+               </div>
+             );
+           })}
+         </div>
+       )}
           </div>
         </section>
       </main>
