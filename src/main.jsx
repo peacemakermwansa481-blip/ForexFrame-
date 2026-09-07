@@ -24,9 +24,7 @@ const emptyTrade = {
   lesson: "",
 };
 
-.trade-result strong {
-  font-size: 12px;
-}
+
 
 .trade-result span {
   color: inherit;
