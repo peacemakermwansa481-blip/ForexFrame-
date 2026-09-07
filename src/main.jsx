@@ -644,7 +644,9 @@ function Dashboard({ user }) {
               </span>
             </div>
 
-           <div style={{ color: "white", padding: "20px" }}>Chart test</div>
+           <div className="empty-chart">
+  <p>Performance chart will appear here.</p>
+</div>
           </div>
 
           <div className="card">
