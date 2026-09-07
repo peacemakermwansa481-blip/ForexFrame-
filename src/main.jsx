@@ -737,7 +737,7 @@ function App() {
     );
   }
 
-  return session ? <Dashboard user={session.user} /> : <AuthScreen />;
+  return session ? <div style={{ color: "white", padding: "40px" }}>Dashboard test</div> : <AuthScreen />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
