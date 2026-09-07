@@ -645,7 +645,63 @@ function Dashboard({ user }) {
             </div>
 
            <div className="real-chart">
-  <p>Performance chart test — {trades.length} trades</p>
+  <svg viewBox="0 0 700 260" preserveAspectRatio="none">
+    {trades.length > 0 && (
+      <polyline
+        points={trades
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(a.trade_date) - new Date(b.trade_date)
+          )
+          .map((trade, index, orderedTrades) => {
+            const pnl = orderedTrades
+              .slice(0, index + 1)
+              .reduce(
+                (total, item) =>
+                  total + Number(item.simulated_pnl || 0),
+                0
+              );
+
+            const maxPnl = Math.max(
+              0,
+              ...orderedTrades.map((item) =>
+                Number(item.simulated_pnl || 0)
+              )
+            );
+
+            const minPnl = Math.min(
+              0,
+              ...orderedTrades.map((item) =>
+                Number(item.simulated_pnl || 0)
+              )
+            );
+
+            const range = maxPnl - minPnl || 1;
+
+            const x =
+              orderedTrades.length === 1
+                ? 350
+                : 25 +
+                  (index / (orderedTrades.length - 1)) *
+                    650;
+
+            const y =
+              235 -
+              ((pnl - minPnl) / range) * 210;
+
+            return `${x},${y}`;
+          })
+          .join(" ")}
+        className="performance-line"
+      />
+    )}
+  </svg>
+
+  <div className="chart-labels">
+    <span>Time</span>
+    <span>Simulated P/L</span>
+  </div>
 </div>
           </div>
 
