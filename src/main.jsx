@@ -209,7 +209,7 @@ if (payload.outcome?.toLowerCase() === "win") {
           </div>
 
           <button className="close-button" onClick={onClose}>
-            脳
+            Back
           </button>
         </div>
 
