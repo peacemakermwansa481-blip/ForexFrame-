@@ -759,9 +759,10 @@ function Dashboard({ user }) {
       </main>
 
       {showModal && (
-        <AddTradeModal
-          onClose={() => setShowModal(false)}
-          onSaved={loadTrades}
+  <div style={{ color: "white", padding: "40px" }}>
+    Add Trade test
+  </div>
+)}
         />
       )}
     </div>
