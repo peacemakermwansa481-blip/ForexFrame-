@@ -129,10 +129,9 @@ function AuthScreen() {
 }
 
 function AddTradeModal({ onClose, onSaved }) {
-  const [trades, setTrades] = useState([]);
-const [showModal, setShowModal] = useState(false);
-const [loadingTrades, setLoadingTrades] = useState(true);
-const [selectedTrade, setSelectedTrade] = useState(null);
+  const [trade, setTrade] = useState(emptyTrade);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   function updateField(field, value) {
     setTrade((current) => ({
