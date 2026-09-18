@@ -774,8 +774,6 @@ const [selectedTrade, setSelectedTrade] = useState(null);
     onSaved={loadTrades}
   />
 )}
-        />
-      )}
     </div>
   );
 }
