@@ -737,7 +737,14 @@ const [selectedTrade, setSelectedTrade] = useState(null);
             ) : (
               <div className="trade-list">
                 {trades.slice(0, 5).map((trade) => (
-                  <div className="trade-row" key={trade.id}>
+                  <div
+  className="trade-row"
+  key={trade.id}
+  onClick={() => {
+    setSelectedTrade(trade);
+    setShowModal(true);
+  }}
+>
                     <div>
                       <strong>{trade.instrument}</strong>
                       <span>
