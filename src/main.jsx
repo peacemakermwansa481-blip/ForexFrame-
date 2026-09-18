@@ -208,7 +208,7 @@ if (result.error) {
 setSaving(false);
 onSaved();
 onClose();
-
+    }
   return (
     <div className="modal-backdrop">
       <div className="trade-modal">
