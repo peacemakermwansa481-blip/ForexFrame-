@@ -515,8 +515,9 @@ function calculatePerformanceMetrics(trades) {
 
 function Dashboard({ user }) {
   const [trades, setTrades] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [loadingTrades, setLoadingTrades] = useState(true);
+const [showModal, setShowModal] = useState(false);
+const [loadingTrades, setLoadingTrades] = useState(true);
+const [selectedTrade, setSelectedTrade] = useState(null);
 
   async function loadTrades() {
     setLoadingTrades(true);
