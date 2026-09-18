@@ -128,8 +128,8 @@ function AuthScreen() {
   );
 }
 
-function AddTradeModal({ onClose, onSaved }) {
-  const [trade, setTrade] = useState(emptyTrade);
+function AddTradeModal({ onClose, onSaved, initialTrade = null }) {
+  const [trade, setTrade] = useState(initialTrade || emptyTrade);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
