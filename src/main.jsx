@@ -184,20 +184,30 @@ if (payload.outcome?.toLowerCase() === "win") {
   payload.simulated_pnl = Math.abs(payload.simulated_pnl || 0);
 }
 
-    const { error: insertError } = await supabase
+    const { user_id, id, created_at, ...tradeData } = payload;
+
+const result = id
+  ? await supabase
       .from("trades")
-      .insert(payload);
+      .update(tradeData)
+      .eq("id", id)
+      .eq("user_id", user.id)
+  : await supabase
+      .from("trades")
+      .insert({
+        ...tradeData,
+        user_id: user.id,
+      });
 
-    if (insertError) {
-      setError(insertError.message);
-      setSaving(false);
-      return;
-    }
+if (result.error) {
+  setError(result.error.message);
+  setSaving(false);
+  return;
+}
 
-    setSaving(false);
-    onSaved();
-    onClose();
-  }
+setSaving(false);
+onSaved();
+onClose();
 
   return (
     <div className="modal-backdrop">
