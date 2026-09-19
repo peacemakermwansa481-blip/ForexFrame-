@@ -777,9 +777,13 @@ const [selectedTrade, setSelectedTrade] = useState(null);
 
       {showModal && (
   <AddTradeModal
-    onClose={() => setShowModal(false)}
-    onSaved={loadTrades}
-  />
+  onClose={() => {
+    setShowModal(false);
+    setSelectedTrade(null);
+  }}
+  onSaved={loadTrades}
+  initialTrade={selectedTrade}
+/>
 )}
     </div>
   );
