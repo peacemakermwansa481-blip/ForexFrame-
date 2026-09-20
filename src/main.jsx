@@ -465,7 +465,7 @@ onClose();
               className="primary-button"
               disabled={saving}
             >
-             <button type="submit" className="primary-button">
+             type="submit" className="primary-button">
   {initialTrade ? "Update Simulated Trade" : "Save Simulated Trade"}
 </button>
           </div>
