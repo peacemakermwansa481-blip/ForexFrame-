@@ -215,7 +215,7 @@ onClose();
         <div className="modal-header">
           <div>
             <p className="eyebrow">JOURNAL ENTRY</p>
-            <h2>Add Simulated Trade</h2>
+            <h2>{initialTrade ? "Edit Simulated Trade" : "Add Simulated Trade"}</h2>
           </div>
 
           <button className="close-button" onClick={onClose}>
