@@ -338,3 +338,44 @@ export function calculatePsychologyAnalysis(trades = []) {
     ],
   };
 }
+
+function analyticsGroup(trades, label, key) {
+  const grouped = new Map();
+  trades.forEach((trade) => {
+    const value = key(trade);
+    if (!value) return;
+    if (!grouped.has(value)) grouped.set(value, []);
+    grouped.get(value).push(trade);
+  });
+  return [...grouped.entries()].map(([value, groupTrades]) => {
+    const stats = calculateTradingStatistics(groupTrades);
+    return {
+      label: value,
+      trades: stats.totalTrades,
+      wins: stats.winningTrades,
+      losses: stats.losingTrades,
+      breakevens: stats.breakevenTrades,
+      winRate: stats.winRate,
+      totalPnL: stats.totalPnL,
+      averagePnL: stats.totalTrades ? stats.totalPnL / stats.totalTrades : 0,
+      averageR: stats.averageRMultiple,
+      profitFactor: stats.profitFactor,
+      largestWin: stats.largestWin,
+      largestLoss: stats.largestLoss,
+      maxDrawdown: stats.maxDrawdown,
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function calculateAdvancedAnalytics(trades = []) {
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const byInstrument = analyticsGroup(trades, "instrument", (trade) => String(trade.instrument || "").trim());
+  const byStrategy = analyticsGroup(trades, "strategy", (trade) => String(trade.strategy || "").trim());
+  const byTimeframe = analyticsGroup(trades, "timeframe", (trade) => String(trade.timeframe || "").trim());
+  const byDirection = analyticsGroup(trades, "direction", (trade) => String(trade.direction || "").trim());
+  const byDay = analyticsGroup(trades, "day", (trade) => {
+    const date = new Date(trade.trade_date);
+    return Number.isFinite(date.getTime()) ? dayNames[date.getDay()] : "";
+  }).sort((a, b) => dayNames.indexOf(a.label) - dayNames.indexOf(b.label));
+  return { byInstrument, byStrategy, byTimeframe, byDirection, byDay, summary: calculateTradingStatistics(trades) };
+}

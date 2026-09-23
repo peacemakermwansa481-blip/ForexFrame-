@@ -1271,3 +1271,33 @@ label {
   .psychology-two-column { grid-template-columns: 1fr; }
   .psychology-page { width: min(100% - 28px, 1200px); padding-top: 28px; }
 }
+
+.analytics-launcher { width: 100%; margin-top: 12px; border: 1px solid #1d2630; color: inherit; display: flex; align-items: center; gap: 14px; text-align: left; cursor: pointer; }
+.analytics-launcher:hover { border-color: #14b8a6; background: #102726; }
+.analytics-page { width: min(1200px, calc(100% - 40px)); margin: 0 auto; padding: 42px 0 60px; }
+.analytics-filter-card, .analytics-section { margin-bottom: 20px; }
+.analytics-filter-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.analytics-filter-heading h2 { margin-bottom: 5px; font-size: 19px; }
+.analytics-filters { margin-bottom: 0; }
+.analytics-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+.analytics-summary-grid span, .analytics-summary-grid strong { display: block; }
+.analytics-summary-grid span { margin-bottom: 8px; color: #94a3b8; font-size: 13px; }
+.analytics-summary-grid strong { font-size: 21px; }
+.analytics-table-wrap { overflow-x: auto; }
+.analytics-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 12px; }
+.analytics-table th, .analytics-table td { padding: 10px 8px; border-bottom: 1px solid #1d2630; text-align: right; white-space: nowrap; }
+.analytics-table th:first-child, .analytics-table td:first-child { text-align: left; }
+.analytics-table th { color: #64748b; font-weight: 600; }
+.analytics-bars { display: grid; gap: 12px; }
+.analytics-bar-row { display: grid; grid-template-columns: 130px minmax(0, 1fr) 74px; align-items: center; gap: 10px; font-size: 12px; }
+.analytics-bar-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.analytics-bar-row small { color: #64748b; }
+.analytics-bar-track { height: 9px; border-radius: 99px; background: #1d2630; overflow: hidden; }
+.analytics-bar { height: 100%; min-width: 4px; border-radius: inherit; background: #14b8a6; }
+.analytics-bar.negative { background: #ef4444; }
+.analytics-bar-row > strong { text-align: right; }
+@media (max-width: 720px) {
+  .analytics-page { width: min(100% - 28px, 1200px); padding-top: 28px; }
+  .analytics-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .analytics-bar-row { grid-template-columns: 95px minmax(0, 1fr) 62px; gap: 7px; }
+}

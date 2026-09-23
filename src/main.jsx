@@ -7,6 +7,7 @@ import {
   calculatePerformanceMetrics,
   calculateTradingStatistics,
   calculatePsychologyAnalysis,
+  calculateAdvancedAnalytics,
   EQUITY_PERIODS,
   filterAndSortTrades,
   filterTradesByPeriod,
@@ -761,6 +762,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const [showTradesPage, setShowTradesPage] = useState(false);
   const [showStatisticsPage, setShowStatisticsPage] = useState(false);
   const [showPsychologyPage, setShowPsychologyPage] = useState(false);
+  const [showAnalyticsPage, setShowAnalyticsPage] = useState(false);
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -851,6 +853,15 @@ const [loadingTrades, setLoadingTrades] = useState(true);
           <div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div>
         </header>
         <PsychologyPage trades={trades} onBack={() => setShowPsychologyPage(false)} />
+      </div>
+    );
+  }
+
+  if (showAnalyticsPage) {
+    return (
+      <div className="app">
+        <header className="topbar"><div><div className="logo">ForexFrame</div><div className="subtitle">Trading Journal</div></div><div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div></header>
+        <AdvancedAnalyticsPage trades={trades} onBack={() => setShowAnalyticsPage(false)} />
       </div>
     );
   }
@@ -1123,6 +1134,11 @@ const [loadingTrades, setLoadingTrades] = useState(true);
             <span className="launcher-copy"><strong>Trading psychology</strong><span>Explore recorded emotions, mistakes, lessons, and patterns</span></span>
             <span className="launcher-arrow">→</span>
           </button>
+          <button className="card analytics-launcher" type="button" onClick={() => setShowAnalyticsPage(true)}>
+            <span className="launcher-icon"><Icon name="chart" size={28} /></span>
+            <span className="launcher-copy"><strong>Advanced analytics</strong><span>Compare performance across your recorded dimensions</span></span>
+            <span className="launcher-arrow">→</span>
+          </button>
         </section>
       </main>
 
@@ -1318,4 +1334,35 @@ function PsychologyPage({ trades, onBack }) {
       <section className="card psychology-section"><div className="card-header"><div><h2>Insights</h2><p className="muted">Descriptive summaries from the selected trades, not causal conclusions.</p></div></div><ul className="insight-list">{analysis.summary.mostRecordedEmotion && <li>You recorded {analysis.summary.mostRecordedEmotion.label} on {analysis.summary.mostRecordedEmotion.trades} trades. Those trades had a {analysis.summary.mostRecordedEmotion.winRate.toFixed(1)}% win rate (n={analysis.summary.mostRecordedEmotion.trades}).</li>}{analysis.summary.mostFrequentMistake && <li>{analysis.summary.mostFrequentMistake.label} was your most frequently recorded mistake, appearing on {analysis.summary.mostFrequentMistake.trades} trades.</li>}{analysis.patterns.length === 0 && <li>Not enough repeated recorded values to identify a meaningful pattern yet.</li>}</ul></section>
     </>}
   </main>;
+}
+
+function AnalyticsTable({ title, groups, compact = false }) {
+  return <section className="card analytics-section"><div className="card-header"><div><h2>{title}</h2><p className="muted">Measurements from recorded trades; sample size is shown.</p></div></div>{groups.length === 0 ? <p className="muted">Not enough recorded trades for this analysis.</p> : <div className="analytics-table-wrap"><table className="analytics-table"><thead><tr><th>Category</th><th>Trades</th><th>Wins</th><th>Losses</th>{!compact && <th>Breakeven</th>}<th>Win rate</th><th>Total P&amp;L</th><th>Avg P&amp;L</th><th>Avg R</th><th>Profit factor</th><th>Largest win</th><th>Largest loss</th>{!compact && <th>Max DD</th>}</tr></thead><tbody>{groups.map((group) => <tr key={group.label}><td><strong>{group.label}</strong></td><td>{group.trades}</td><td>{group.wins}</td><td>{group.losses}</td>{!compact && <td>{group.breakevens}</td>}<td>{group.winRate.toFixed(1)}%</td><td className={group.totalPnL >= 0 ? "positive-text" : "negative-text"}>{group.totalPnL.toFixed(2)}</td><td>{group.averagePnL.toFixed(2)}</td><td>{group.averageR.toFixed(2)}R</td><td>{group.profitFactor == null ? "—" : group.profitFactor.toFixed(2)}</td><td className="positive-text">{group.largestWin.toFixed(2)}</td><td className="negative-text">{group.largestLoss.toFixed(2)}</td>{!compact && <td className="negative-text">{group.maxDrawdown.toFixed(2)}</td>}</tr>)}</tbody></table></div>}</section>;
+}
+
+function AnalyticsBars({ title, groups, valueKey = "totalPnL", suffix = "" }) {
+  if (groups.length < 2) return null;
+  const max = Math.max(...groups.map((group) => Math.abs(group[valueKey])), 1);
+  return <section className="card analytics-section"><div className="card-header"><div><h2>{title}</h2><p className="muted">Descriptive comparison of the filtered dataset.</p></div></div><div className="analytics-bars">{groups.map((group) => <div className="analytics-bar-row" key={group.label}><span>{group.label} <small>({group.trades})</small></span><div className="analytics-bar-track"><div className={`analytics-bar ${group[valueKey] < 0 ? "negative" : ""}`} style={{ width: `${Math.max(4, Math.abs(group[valueKey]) / max * 100)}%` }} /></div><strong>{group[valueKey].toFixed(2)}{suffix}</strong></div>)}</div></section>;
+}
+
+function AdvancedAnalyticsPage({ trades, onBack }) {
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({ date: "all", instrument: "all", direction: "all", timeframe: "all", outcome: "all", strategy: "all", customStart: "", customEnd: "" });
+  const instruments = [...new Set(trades.map((trade) => trade.instrument).filter(Boolean))].sort();
+  const strategies = [...new Set(trades.map((trade) => trade.strategy).filter(Boolean))].sort();
+  const filteredTrades = filterAndSortTrades(trades, filters, "newest");
+  const analytics = calculateAdvancedAnalytics(filteredTrades);
+  const stats = analytics.summary;
+  const updateFilter = (field, value) => setFilters((current) => ({ ...current, [field]: value }));
+  const clearFilters = () => setFilters({ date: "all", instrument: "all", direction: "all", timeframe: "all", outcome: "all", strategy: "all", customStart: "", customEnd: "" });
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => !["customStart", "customEnd"].includes(key) && value !== "all").length;
+  const summary = [["Total Trades", stats.totalTrades], ["Win Rate", `${stats.winRate.toFixed(1)}%`], ["Total P&L", stats.totalPnL.toFixed(2)], ["Average R", `${stats.averageRMultiple.toFixed(2)}R`], ["Profit Factor", stats.profitFactor == null ? "—" : stats.profitFactor.toFixed(2)], ["Maximum Drawdown", stats.maxDrawdown.toFixed(2)]];
+  const insights = [];
+  if (analytics.byInstrument.length) insights.push(`${analytics.byInstrument[0].label} accounts for ${analytics.byInstrument[0].trades} recorded trades in this filtered dataset.`);
+  analytics.byDirection.forEach((group) => insights.push(`${group.label} trades account for ${group.trades} trades with a total P&L of ${group.totalPnL.toFixed(2)}.`));
+  analytics.byTimeframe.filter((group) => group.trades > 1).slice(0, 2).forEach((group) => insights.push(`${group.label} trades have an average R of ${group.averageR.toFixed(2)} across ${group.trades} trades.`));
+  return <main className="analytics-page"><div className="page-heading"><button className="back-button" type="button" onClick={onBack}><Icon name="arrowLeft" size={18} />Dashboard</button><div><p className="eyebrow">TRADING JOURNAL</p><h1>Advanced analytics</h1><p className="muted">Break down recorded performance by instrument, strategy, timeframe, direction, and day.</p></div><span className="badge">{filteredTrades.length} trades</span></div>
+    <section className="card analytics-filter-card"><div className="analytics-filter-heading"><div><h2>Analytics filters</h2><p className="muted">All sections recalculate from matching trades.</p></div><button type="button" className={`filter-toggle ${showFilters || activeFilterCount ? "active" : ""}`} onClick={() => setShowFilters((value) => !value)}>Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}</button></div>{showFilters && <div className="filter-grid analytics-filters"><label>Date<select value={filters.date} onChange={(event) => updateFilter("date", event.target.value)}><option value="all">All dates</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="30">Last 30 days</option><option value="custom">Custom range</option></select></label><label>Instrument<select value={filters.instrument} onChange={(event) => updateFilter("instrument", event.target.value)}><option value="all">All instruments</option>{instruments.map((value) => <option key={value}>{value}</option>)}</select></label><label>Direction<select value={filters.direction} onChange={(event) => updateFilter("direction", event.target.value)}><option value="all">All directions</option><option>Buy</option><option>Sell</option></select></label><label>Timeframe<select value={filters.timeframe} onChange={(event) => updateFilter("timeframe", event.target.value)}><option value="all">All timeframes</option>{["M1", "M5", "M15", "M30", "H1", "H4", "D1"].map((value) => <option key={value}>{value}</option>)}</select></label><label>Strategy<select value={filters.strategy} onChange={(event) => updateFilter("strategy", event.target.value)}><option value="all">All strategies</option>{strategies.map((value) => <option key={value}>{value}</option>)}</select></label><label>Outcome<select value={filters.outcome} onChange={(event) => updateFilter("outcome", event.target.value)}><option value="all">All outcomes</option><option>Win</option><option>Loss</option><option>Breakeven</option></select></label>{filters.date === "custom" && <><label>From<input type="date" value={filters.customStart} onChange={(event) => updateFilter("customStart", event.target.value)} /></label><label>To<input type="date" value={filters.customEnd} onChange={(event) => updateFilter("customEnd", event.target.value)} /></label></>}<button type="button" className="secondary-button" onClick={clearFilters}>Clear filters</button></div>}</section>
+    {filteredTrades.length === 0 ? <section className="card empty-state"><p>No trades match the selected analytics filters.</p><span>Clear filters or record more trades to compare performance.</span></section> : <><section className="analytics-summary-grid">{summary.map(([label, value]) => <div className="card" key={label}><span>{label}</span><strong>{value}</strong></div>)}</section><AnalyticsBars title="P&L by instrument" groups={analytics.byInstrument} /><AnalyticsBars title="P&L by strategy" groups={analytics.byStrategy} /><AnalyticsBars title="Win rate by timeframe" groups={analytics.byTimeframe} valueKey="winRate" suffix="%" /><AnalyticsBars title="P&L by day" groups={analytics.byDay} /><AnalyticsTable title="Performance by instrument" groups={analytics.byInstrument} /><AnalyticsTable title="Performance by strategy" groups={analytics.byStrategy} /><AnalyticsTable title="Performance by timeframe" groups={analytics.byTimeframe} compact /><AnalyticsTable title="Buy vs Sell performance" groups={analytics.byDirection} /><AnalyticsTable title="Performance by day of week" groups={analytics.byDay} compact /><section className="card analytics-section"><div className="card-header"><div><h2>Data insights</h2><p className="muted">Factual observations from the selected trades.</p></div></div><ul className="insight-list">{insights.length ? insights.map((insight) => <li key={insight}>{insight}</li>) : <li>Not enough recorded trades for meaningful comparisons yet.</li>}</ul></section></>}</main>;
 }

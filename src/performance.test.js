@@ -3,6 +3,7 @@ import {
   buildEquityCurve,
   calculatePerformanceMetrics,
   calculatePsychologyAnalysis,
+  calculateAdvancedAnalytics,
   calculateTradingStatistics,
   filterAndSortTrades,
   filterTradesByDateRange,
@@ -141,5 +142,21 @@ describe("trading psychology", () => {
     expect(analysis.summary.mostCommonLosingEmotion.label).toBe("Fear");
     expect(analysis.lessons).toHaveLength(2);
     expect(analysis.strategies[0]).toMatchObject({ label: "Breakout", commonEmotion: "Calm" });
+  });
+});
+
+describe("advanced analytics", () => {
+  it("groups performance by dimensions and only includes recorded categories", () => {
+    const result = calculateAdvancedAnalytics([
+      { trade_date: "2026-01-05T10:00:00", instrument: "XAU/USD", strategy: "Breakout", timeframe: "H1", direction: "Buy", outcome: "Win", simulated_pnl: 100, r_multiple: 2 },
+      { trade_date: "2026-01-06T10:00:00", instrument: "XAU/USD", strategy: "Breakout", timeframe: "H1", direction: "Sell", outcome: "Loss", simulated_pnl: 40, r_multiple: -1 },
+      { trade_date: "2026-01-07T10:00:00", instrument: "EUR/USD", strategy: "Reversal", timeframe: "M15", direction: "Buy", outcome: "Breakeven", simulated_pnl: 0, r_multiple: 0 },
+    ]);
+
+    expect(result.byInstrument.map(({ label }) => label)).toEqual(["EUR/USD", "XAU/USD"]);
+    expect(result.byInstrument[1]).toMatchObject({ trades: 2, wins: 1, losses: 1, totalPnL: 60, averagePnL: 30 });
+    expect(result.byTimeframe.map(({ label }) => label)).toEqual(["H1", "M15"]);
+    expect(result.byDirection).toHaveLength(2);
+    expect(result.byDay.map(({ label }) => label)).toEqual(["Monday", "Tuesday", "Wednesday"]);
   });
 });
