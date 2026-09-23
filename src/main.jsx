@@ -219,8 +219,8 @@ if (result.error) {
 }
 
 setSaving(false);
-onSaved();
-onClose();
+  await onSaved();
+  onClose();
     }
   return (
     <div className="modal-backdrop">
@@ -514,11 +514,16 @@ function Icon({ name, size = 20 }) {
   );
 }
 
-function TradeDetail({ trade, onEdit, onDelete }) {
+function TradeDetail({ trade, onEdit, onDelete, onBack }) {
   const displayValue = (value) => value || "—";
 
   return (
-    <article className="trade-detail card">
+    <div className="trade-details-page">
+      <button className="back-button" type="button" onClick={onBack}>
+        <Icon name="arrowLeft" size={18} />
+        Back to trades
+      </button>
+      <article className="trade-detail card">
       <div className="trade-detail-header">
         <div>
           <p className="eyebrow">TRADE DETAILS</p>
@@ -553,7 +558,24 @@ function TradeDetail({ trade, onEdit, onDelete }) {
         <div><span>Mistake</span><strong>{displayValue(trade.mistake)}</strong></div>
         <div className="full-span"><span>Lesson</span><p>{displayValue(trade.lesson)}</p></div>
       </div>
-    </article>
+      <section className="trade-analysis">
+        <div className="card-header">
+          <div>
+            <h2>Trade Analysis</h2>
+            <p className="muted">Observations based only on the information recorded for this trade.</p>
+          </div>
+        </div>
+        <div className="analysis-list">
+          <div><span>Result</span><strong>{numericValue(trade.simulated_pnl) > 0 ? "Profitable" : numericValue(trade.simulated_pnl) < 0 ? "Unprofitable" : "Breakeven"}</strong></div>
+          <div><span>Direction</span><strong>{trade.direction || "Not recorded"}</strong></div>
+          <div><span>Strategy</span><strong>{trade.strategy || "Not recorded"}</strong></div>
+          <div><span>Emotion recorded</span><strong>{trade.emotion ? "Yes" : "No"}</strong></div>
+          <div><span>Mistake recorded</span><strong>{trade.mistake ? "Yes" : "No"}</strong></div>
+          <div><span>Lesson recorded</span><strong>{trade.lesson ? "Yes" : "No"}</strong></div>
+        </div>
+      </section>
+      </article>
+    </div>
   );
 }
 
@@ -604,6 +626,8 @@ function TradesPage({ trades, loadingTrades, selectedTrade, onSelectTrade, onBac
           <p>No trades recorded yet.</p>
           <span>Add a simulated trade from the dashboard to begin.</span>
         </div>
+      ) : selectedTrade ? (
+        <TradeDetail trade={selectedTrade} onEdit={onEdit} onDelete={onDelete} onBack={() => onSelectTrade(null)} />
       ) : (
         <div className="trades-page-grid">
           <section className="card all-trades-card">
@@ -716,15 +740,11 @@ function TradesPage({ trades, loadingTrades, selectedTrade, onSelectTrade, onBac
             )}
           </section>
 
-          {selectedTrade ? (
-            <TradeDetail trade={selectedTrade} onEdit={onEdit} onDelete={onDelete} />
-          ) : (
-            <div className="card empty-state trade-detail-placeholder">
-              <div className="empty-icon"><Icon name="book" /></div>
-              <p>Select a trade</p>
-              <span>Its details and edit/delete icons will appear here.</span>
-            </div>
-          )}
+          <div className="card empty-state trade-detail-placeholder">
+            <div className="empty-icon"><Icon name="book" /></div>
+            <p>Select a trade</p>
+            <span>Its details and edit/delete icons will appear here.</span>
+          </div>
         </div>
       )}
     </main>
@@ -754,6 +774,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
     }
 
     setLoadingTrades(false);
+    return data || [];
   }
 
   useEffect(() => {
@@ -876,7 +897,11 @@ const [loadingTrades, setLoadingTrades] = useState(true);
         {showModal && (
           <AddTradeModal
             onClose={() => setShowModal(false)}
-            onSaved={loadTrades}
+            onSaved={async () => {
+              const refreshedTrades = await loadTrades();
+              const refreshedTrade = refreshedTrades.find((trade) => trade.id === selectedTrade?.id);
+              if (refreshedTrade) setSelectedTrade(refreshedTrade);
+            }}
             initialTrade={selectedTrade}
           />
         )}

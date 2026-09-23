@@ -559,6 +559,43 @@ label {
   min-height: 360px;
 }
 
+.trade-details-page {
+  width: 100%;
+}
+
+.trade-details-page > .back-button {
+  margin-bottom: 18px;
+}
+
+.trade-details-page .trade-detail {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.trade-analysis {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #1d2630;
+}
+
+.analysis-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.analysis-list span {
+  display: block;
+  margin-bottom: 5px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.analysis-list strong {
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
 .filter-toggle {
   border: 1px solid #26313d;
   border-radius: 9px;
@@ -1051,6 +1088,10 @@ label {
 
   .trade-detail-grid .full-span {
     grid-column: auto;
+  }
+
+  .analysis-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .filter-grid,
