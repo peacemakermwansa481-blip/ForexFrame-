@@ -1196,3 +1196,78 @@ label {
   stroke: #0b0f14;
   stroke-width: 2;
 }
+
+.psychology-launcher {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #1d2630;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.psychology-launcher:hover {
+  border-color: #8b5cf6;
+  background: #1c1830;
+}
+
+.psychology-page {
+  width: min(1200px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 42px 0 60px;
+}
+
+.psychology-filter-card,
+.psychology-section { margin-bottom: 20px; }
+
+.psychology-filter-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.psychology-filter-heading h2 { margin-bottom: 5px; font-size: 19px; }
+.psychology-filters { margin-bottom: 0; }
+
+.psychology-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.psychology-summary-grid span,
+.psychology-summary-grid strong { display: block; }
+.psychology-summary-grid span { margin-bottom: 8px; color: #94a3b8; font-size: 13px; }
+.psychology-summary-grid strong { font-size: 18px; }
+
+.psychology-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.psychology-table-wrap { overflow-x: auto; }
+.psychology-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 12px; }
+.psychology-table th,
+.psychology-table td { padding: 11px 8px; border-bottom: 1px solid #1d2630; text-align: right; white-space: nowrap; }
+.psychology-table th:first-child,
+.psychology-table td:first-child { text-align: left; }
+.psychology-table th { color: #64748b; font-weight: 600; }
+
+.lesson-list { display: grid; gap: 10px; }
+.lesson-item { display: grid; gap: 5px; padding: 12px; border: 1px solid #1d2630; border-radius: 9px; }
+.lesson-item span { color: #64748b; font-size: 12px; }
+.insight-list { display: grid; gap: 10px; margin: 0; padding-left: 20px; color: #cbd5e1; }
+
+@media (max-width: 720px) {
+  .psychology-summary-grid,
+  .psychology-two-column { grid-template-columns: 1fr; }
+  .psychology-page { width: min(100% - 28px, 1200px); padding-top: 28px; }
+}

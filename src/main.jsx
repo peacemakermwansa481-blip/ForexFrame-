@@ -6,6 +6,7 @@ import {
   buildEquityCurve,
   calculatePerformanceMetrics,
   calculateTradingStatistics,
+  calculatePsychologyAnalysis,
   EQUITY_PERIODS,
   filterAndSortTrades,
   filterTradesByPeriod,
@@ -759,6 +760,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const [equityPeriod, setEquityPeriod] = useState(30);
   const [showTradesPage, setShowTradesPage] = useState(false);
   const [showStatisticsPage, setShowStatisticsPage] = useState(false);
+  const [showPsychologyPage, setShowPsychologyPage] = useState(false);
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -840,6 +842,18 @@ const [loadingTrades, setLoadingTrades] = useState(true);
       month: "short",
       day: "numeric",
     });
+
+  if (showPsychologyPage) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <div><div className="logo">ForexFrame</div><div className="subtitle">Trading Journal</div></div>
+          <div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div>
+        </header>
+        <PsychologyPage trades={trades} onBack={() => setShowPsychologyPage(false)} />
+      </div>
+    );
+  }
 
   if (showStatisticsPage) {
     return (
@@ -1104,6 +1118,11 @@ const [loadingTrades, setLoadingTrades] = useState(true);
             </span>
             <span className="launcher-arrow">→</span>
           </button>
+          <button className="card psychology-launcher" type="button" onClick={() => setShowPsychologyPage(true)}>
+            <span className="launcher-icon"><Icon name="chart" size={28} /></span>
+            <span className="launcher-copy"><strong>Trading psychology</strong><span>Explore recorded emotions, mistakes, lessons, and patterns</span></span>
+            <span className="launcher-arrow">→</span>
+          </button>
         </section>
       </main>
 
@@ -1253,4 +1272,50 @@ function StatisticsPage({ trades, onBack }) {
       </section>
     </main>
   );
+}
+
+function PsychologyMetricTable({ title, groups, emptyLabel, showStrategyContext = false }) {
+  return (
+    <section className="card psychology-section">
+      <div className="card-header"><div><h2>{title}</h2><p className="muted">Recorded trades only; association does not imply causation.</p></div></div>
+      {groups.length === 0 ? <p className="muted">{emptyLabel}</p> : (
+        <div className="psychology-table-wrap"><table className="psychology-table"><thead><tr><th>Recorded value</th><th>Trades</th><th>Wins</th><th>Losses</th><th>Win rate</th><th>Total P&amp;L</th><th>Avg R</th>{showStrategyContext && <><th>Common emotion</th><th>Common mistake</th></>}</tr></thead><tbody>
+          {groups.map((group) => <tr key={group.label}><td><strong>{group.label}</strong></td><td>{group.trades}</td><td>{group.wins}</td><td>{group.losses}</td><td>{group.winRate.toFixed(1)}%</td><td className={group.totalPnL >= 0 ? "positive-text" : "negative-text"}>{group.totalPnL.toFixed(2)}</td><td>{group.averageR.toFixed(2)}R</td>{showStrategyContext && <><td>{group.commonEmotion || "Not recorded"}</td><td>{group.commonMistake || "Not recorded"}</td></>}</tr>)}
+        </tbody></table></div>
+      )}
+    </section>
+  );
+}
+
+function PsychologyPage({ trades, onBack }) {
+  const [filters, setFilters] = useState({ date: "all", instrument: "all", direction: "all", timeframe: "all", outcome: "all", strategy: "all", customStart: "", customEnd: "" });
+  const [showFilters, setShowFilters] = useState(false);
+  const instruments = [...new Set(trades.map((trade) => trade.instrument).filter(Boolean))].sort();
+  const strategies = [...new Set(trades.map((trade) => trade.strategy).filter(Boolean))].sort();
+  const filteredTrades = filterAndSortTrades(trades, filters, "newest");
+  const analysis = calculatePsychologyAnalysis(filteredTrades);
+  const updateFilter = (field, value) => setFilters((current) => ({ ...current, [field]: value }));
+  const clearFilters = () => setFilters({ date: "all", instrument: "all", direction: "all", timeframe: "all", outcome: "all", strategy: "all", customStart: "", customEnd: "" });
+  const summaryCards = [
+    ["Most Recorded Emotion", analysis.summary.mostRecordedEmotion ? `${analysis.summary.mostRecordedEmotion.label} (${analysis.summary.mostRecordedEmotion.trades})` : null],
+    ["Most Frequent Mistake", analysis.summary.mostFrequentMistake ? `${analysis.summary.mostFrequentMistake.label} (${analysis.summary.mostFrequentMistake.trades})` : null],
+    ["Trades With Mistakes", analysis.summary.tradesWithMistakes],
+    ["Trades With Lessons", analysis.summary.tradesWithLessons],
+    ["Common Emotion in Losses", analysis.summary.mostCommonLosingEmotion?.label || null],
+    ["Common Mistake in Losses", analysis.summary.mostCommonLosingMistake?.label || null],
+  ];
+  return <main className="psychology-page">
+    <div className="page-heading"><button className="back-button" type="button" onClick={onBack}><Icon name="arrowLeft" size={18} />Dashboard</button><div><p className="eyebrow">TRADING JOURNAL</p><h1>Trading psychology</h1><p className="muted">Review recorded emotions, mistakes, and lessons alongside performance.</p></div><span className="badge">{filteredTrades.length} trades</span></div>
+    <section className="card psychology-filter-card"><div className="psychology-filter-heading"><div><h2>Analysis filters</h2><p className="muted">The analysis recalculates from the matching trades.</p></div><button type="button" className={`filter-toggle ${showFilters ? "active" : ""}`} onClick={() => setShowFilters((value) => !value)}>Filters</button></div>
+      {showFilters && <div className="filter-grid psychology-filters"><label>Date<select value={filters.date} onChange={(event) => updateFilter("date", event.target.value)}><option value="all">All dates</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="30">Last 30 days</option><option value="custom">Custom range</option></select></label><label>Instrument<select value={filters.instrument} onChange={(event) => updateFilter("instrument", event.target.value)}><option value="all">All instruments</option>{instruments.map((value) => <option key={value}>{value}</option>)}</select></label><label>Direction<select value={filters.direction} onChange={(event) => updateFilter("direction", event.target.value)}><option value="all">All directions</option><option>Buy</option><option>Sell</option></select></label><label>Timeframe<select value={filters.timeframe} onChange={(event) => updateFilter("timeframe", event.target.value)}><option value="all">All timeframes</option>{["M1", "M5", "M15", "M30", "H1", "H4", "D1"].map((value) => <option key={value}>{value}</option>)}</select></label><label>Strategy<select value={filters.strategy} onChange={(event) => updateFilter("strategy", event.target.value)}><option value="all">All strategies</option>{strategies.map((value) => <option key={value}>{value}</option>)}</select></label><label>Outcome<select value={filters.outcome} onChange={(event) => updateFilter("outcome", event.target.value)}><option value="all">All outcomes</option><option>Win</option><option>Loss</option><option>Breakeven</option></select></label>{filters.date === "custom" && <><label>From<input type="date" value={filters.customStart} onChange={(event) => updateFilter("customStart", event.target.value)} /></label><label>To<input type="date" value={filters.customEnd} onChange={(event) => updateFilter("customEnd", event.target.value)} /></label></>}<button type="button" className="secondary-button" onClick={clearFilters}>Clear filters</button></div>}
+    </section>
+    {filteredTrades.length === 0 ? <section className="card empty-state"><p>No recorded trades match this analysis.</p><span>Record emotions, mistakes, and lessons when adding trades to identify patterns.</span></section> : <>
+      <section className="psychology-summary-grid">{summaryCards.filter(([, value]) => value !== null && value !== 0).map(([label, value]) => <div className="card" key={label}><span>{label}</span><strong>{value}</strong></div>)}</section>
+      <div className="psychology-two-column"><PsychologyMetricTable title="Emotion analysis" groups={analysis.emotions} emptyLabel="No emotions recorded in this period." /><PsychologyMetricTable title="Mistake analysis" groups={analysis.mistakes} emptyLabel="No mistakes recorded in this period." /></div>
+      <section className="card psychology-section"><div className="card-header"><div><h2>Lessons recorded</h2><p className="muted">Free-text lessons are organized, not interpreted as psychological diagnoses.</p></div><span className="badge">{analysis.lessons.length}</span></div>{analysis.lessons.length ? <div className="lesson-list">{analysis.lessons.slice(0, 10).map((lesson, index) => <div className="lesson-item" key={`${lesson.tradeDate}-${index}`}><strong>{lesson.text}</strong><span>{lesson.outcome} · {lesson.instrument} · {new Date(lesson.tradeDate).toLocaleDateString()}</span></div>)}</div> : <p className="muted">No lessons recorded in this period.</p>}</section>
+      <PsychologyMetricTable title="Strategy + psychology" groups={analysis.strategies} showStrategyContext emptyLabel="No strategies recorded in this period." />
+      {analysis.patterns.length > 0 && <section className="card psychology-section"><div className="card-header"><div><h2>Repeated patterns</h2><p className="muted">Simple patterns supported by repeated recorded values.</p></div></div><ul className="insight-list">{analysis.patterns.slice(0, 8).map((pattern) => <li key={pattern}>{pattern}</li>)}</ul></section>}
+      <section className="card psychology-section"><div className="card-header"><div><h2>Insights</h2><p className="muted">Descriptive summaries from the selected trades, not causal conclusions.</p></div></div><ul className="insight-list">{analysis.summary.mostRecordedEmotion && <li>You recorded {analysis.summary.mostRecordedEmotion.label} on {analysis.summary.mostRecordedEmotion.trades} trades. Those trades had a {analysis.summary.mostRecordedEmotion.winRate.toFixed(1)}% win rate (n={analysis.summary.mostRecordedEmotion.trades}).</li>}{analysis.summary.mostFrequentMistake && <li>{analysis.summary.mostFrequentMistake.label} was your most frequently recorded mistake, appearing on {analysis.summary.mostFrequentMistake.trades} trades.</li>}{analysis.patterns.length === 0 && <li>Not enough repeated recorded values to identify a meaningful pattern yet.</li>}</ul></section>
+    </>}
+  </main>;
 }

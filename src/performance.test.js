@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEquityCurve,
   calculatePerformanceMetrics,
+  calculatePsychologyAnalysis,
   calculateTradingStatistics,
   filterAndSortTrades,
   filterTradesByDateRange,
@@ -122,5 +123,23 @@ describe("equity curve", () => {
     expect(geometry.zeroY).toBeCloseTo(geometry.points[0].y);
     expect(geometry.zeroY).toBeLessThan(geometry.points[1].y);
     expect(geometry.zeroY).toBeGreaterThan(geometry.points[2].y);
+  });
+});
+
+
+describe("trading psychology", () => {
+  it("summarizes recorded psychology fields without inventing missing values", () => {
+    const analysis = calculatePsychologyAnalysis([
+      { trade_date: "2026-01-01", emotion: "Fear", mistake: "Late Entry", lesson: "Wait for confirmation", outcome: "Loss", simulated_pnl: 30, r_multiple: -1 },
+      { trade_date: "2026-01-02", emotion: "Fear", mistake: "Late Entry", lesson: "Wait for confirmation", outcome: "Win", simulated_pnl: 60, r_multiple: 2 },
+      { trade_date: "2026-01-03", emotion: "Calm", strategy: "Breakout", outcome: "Win", simulated_pnl: 40, r_multiple: 1 },
+    ]);
+
+    expect(analysis.emotions[0]).toMatchObject({ label: "Fear", trades: 2, wins: 1, losses: 1, winRate: 50 });
+    expect(analysis.mistakes[0]).toMatchObject({ label: "Late Entry", trades: 2 });
+    expect(analysis.summary.tradesWithLessons).toBe(2);
+    expect(analysis.summary.mostCommonLosingEmotion.label).toBe("Fear");
+    expect(analysis.lessons).toHaveLength(2);
+    expect(analysis.strategies[0]).toMatchObject({ label: "Breakout", commonEmotion: "Calm" });
   });
 });

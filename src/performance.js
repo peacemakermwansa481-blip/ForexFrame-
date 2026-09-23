@@ -268,3 +268,73 @@ export function filterAndSortTrades(trades = [], filters = {}, sortBy = "newest"
     return new Date(b.trade_date) - new Date(a.trade_date);
   });
 }
+
+function psychologyGroup(trades, field) {
+  const groups = new Map();
+  trades.forEach((trade) => {
+    const label = String(trade[field] || "").trim();
+    if (!label) return;
+    const key = label.toLowerCase();
+    if (!groups.has(key)) groups.set(key, { label, trades: [] });
+    groups.get(key).trades.push(trade);
+  });
+
+  return [...groups.values()].map(({ label, trades: groupTrades }) => {
+    const wins = groupTrades.filter((trade) => normalizedText(trade.outcome) === "win").length;
+    const losses = groupTrades.filter((trade) => normalizedText(trade.outcome) === "loss").length;
+    const pnl = groupTrades.reduce((sum, trade) => sum + normalizedProfitLoss(trade), 0);
+    return {
+      label,
+      trades: groupTrades.length,
+      wins,
+      losses,
+      winRate: wins + losses ? (wins / (wins + losses)) * 100 : 0,
+      totalPnL: pnl,
+      averageR: groupTrades.reduce((sum, trade) => sum + numericValue(trade.r_multiple), 0) / groupTrades.length,
+      losingTrades: losses,
+    };
+  }).sort((a, b) => b.trades - a.trades || a.label.localeCompare(b.label));
+}
+
+export function calculatePsychologyAnalysis(trades = []) {
+  const emotions = psychologyGroup(trades, "emotion");
+  const mistakes = psychologyGroup(trades, "mistake");
+  const strategies = psychologyGroup(trades, "strategy");
+  const lessons = trades
+    .filter((trade) => String(trade.lesson || "").trim())
+    .sort((a, b) => new Date(b.trade_date) - new Date(a.trade_date))
+    .map((trade) => ({
+      text: String(trade.lesson).trim(),
+      outcome: trade.outcome || "Not recorded",
+      tradeDate: trade.trade_date,
+      instrument: trade.instrument || "Not recorded",
+    }));
+  const losingEmotions = psychologyGroup(trades.filter((trade) => normalizedText(trade.outcome) === "loss"), "emotion");
+  const losingMistakes = psychologyGroup(trades.filter((trade) => normalizedText(trade.outcome) === "loss"), "mistake");
+  const mostCommon = (groups) => groups[0] || null;
+
+  return {
+    emotions,
+    mistakes,
+    strategies: strategies.map((strategy) => {
+      const strategyTrades = trades.filter((trade) => normalizedText(trade.strategy) === normalizedText(strategy.label));
+      const emotionGroups = psychologyGroup(strategyTrades, "emotion");
+      const mistakeGroups = psychologyGroup(strategyTrades, "mistake");
+      return { ...strategy, commonEmotion: mostCommon(emotionGroups)?.label || null, commonMistake: mostCommon(mistakeGroups)?.label || null };
+    }),
+    lessons,
+    summary: {
+      tradesWithEmotions: trades.filter((trade) => String(trade.emotion || "").trim()).length,
+      tradesWithMistakes: trades.filter((trade) => String(trade.mistake || "").trim()).length,
+      tradesWithLessons: lessons.length,
+      mostRecordedEmotion: mostCommon(emotions),
+      mostFrequentMistake: mostCommon(mistakes),
+      mostCommonLosingEmotion: mostCommon(losingEmotions),
+      mostCommonLosingMistake: mostCommon(losingMistakes),
+    },
+    patterns: [
+      ...mistakes.filter((item) => item.trades > 1).map((item) => `${item.label} was recorded on ${item.trades} trades.`),
+      ...emotions.filter((item) => item.trades > 1).map((item) => `Trades recorded with ${item.label} had a ${item.winRate.toFixed(1)}% win rate (n=${item.trades}).`),
+    ],
+  };
+}
