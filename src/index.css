@@ -615,6 +615,23 @@ label {
   stroke-dasharray: 5 5;
 }
 
+.chart-grid-line {
+  stroke: rgba(148, 163, 184, 0.12);
+  stroke-width: 1;
+}
+
+.chart-y-tick text,
+.chart-axis-label {
+  fill: #94a3b8;
+  font-size: 11px;
+}
+
+.chart-axis-title {
+  fill: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .performance-line {
   fill: none;
   stroke: #2563eb;
@@ -627,15 +644,4 @@ label {
   fill: #2563eb;
   stroke: #0b0f14;
   stroke-width: 2;
-}
-
-.chart-labels {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-  color: #64748b;
-  font-size: 11px;
 }

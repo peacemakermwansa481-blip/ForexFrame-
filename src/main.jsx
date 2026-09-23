@@ -535,6 +535,16 @@ const [selectedTrade, setSelectedTrade] = useState(null);
   const equityCurve = buildEquityCurve(trades);
   const chartGeometry = getChartGeometry(equityCurve);
   const orderedTrades = sortTradesChronologically(trades);
+  const formatMoney = (value) =>
+    Number(value).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  const formatDate = (value) =>
+    new Date(value).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
 
   return (
     <div className="app">
@@ -626,10 +636,28 @@ const [selectedTrade, setSelectedTrade] = useState(null);
 
             <div className="real-chart">
               {trades.length > 0 ? (
-                <svg viewBox="0 0 700 260" role="img" aria-label="Cumulative simulated equity curve">
+                <svg
+                  viewBox="0 0 700 260"
+                  role="img"
+                  aria-label="Cumulative simulated equity curve with money on the Y-axis and time on the X-axis"
+                >
+                  {chartGeometry.yTicks.map(({ value, y }) => (
+                    <g key={value} className="chart-y-tick">
+                      <line
+                        x1={chartGeometry.padding.left}
+                        x2="680"
+                        y1={y}
+                        y2={y}
+                        className="chart-grid-line"
+                      />
+                      <text x="68" y={y + 4} textAnchor="end">
+                        {formatMoney(value)}
+                      </text>
+                    </g>
+                  ))}
                   <line
-                    x1="25"
-                    x2="675"
+                    x1={chartGeometry.padding.left}
+                    x2="680"
                     y1={chartGeometry.zeroY}
                     y2={chartGeometry.zeroY}
                     className="chart-zero-line"
@@ -651,6 +679,24 @@ const [selectedTrade, setSelectedTrade] = useState(null);
                       </title>
                     </circle>
                   ))}
+                  <text
+                    x="14"
+                    y="150"
+                    textAnchor="middle"
+                    transform="rotate(-90 14 150)"
+                    className="chart-axis-title"
+                  >
+                    Amount
+                  </text>
+                  <text x="350" y="258" textAnchor="middle" className="chart-axis-title">
+                    Time
+                  </text>
+                  <text x={chartGeometry.padding.left} y="247" className="chart-axis-label">
+                    {formatDate(orderedTrades[0].trade_date)}
+                  </text>
+                  <text x="680" y="247" textAnchor="end" className="chart-axis-label">
+                    {formatDate(orderedTrades[orderedTrades.length - 1].trade_date)}
+                  </text>
                 </svg>
               ) : (
                 <div className="empty-state">
@@ -659,12 +705,6 @@ const [selectedTrade, setSelectedTrade] = useState(null);
                 </div>
               )}
 
-              {trades.length > 0 && (
-                <div className="chart-labels">
-                  <span>{new Date(orderedTrades[0].trade_date).toLocaleDateString()}</span>
-                  <span>{new Date(orderedTrades[orderedTrades.length - 1].trade_date).toLocaleDateString()}</span>
-                </div>
-              )}
             </div>
           </div>
 

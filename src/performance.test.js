@@ -33,6 +33,9 @@ describe("equity curve", () => {
     ]));
 
     expect(geometry.points).toHaveLength(3);
+    expect(geometry.yTicks).toHaveLength(5);
+    expect(geometry.yTicks[0].value).toBe(10);
+    expect(geometry.yTicks.at(-1).value).toBe(-20);
     expect(geometry.zeroY).toBeCloseTo(geometry.points[0].y);
     expect(geometry.zeroY).toBeLessThan(geometry.points[1].y);
     expect(geometry.zeroY).toBeGreaterThan(geometry.points[2].y);

@@ -54,13 +54,21 @@ export function calculatePerformanceMetrics(trades = []) {
 }
 
 export function getChartGeometry(equityCurve, width = 700, height = 260) {
-  const padding = { top: 20, right: 25, bottom: 25, left: 25 };
+  const padding = { top: 20, right: 20, bottom: 38, left: 78 };
   const values = equityCurve.map((point) => point.equity);
   const minEquity = Math.min(0, ...values);
   const maxEquity = Math.max(0, ...values);
   const range = maxEquity - minEquity || 1;
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
+  const tickCount = 5;
+  const yTicks = Array.from({ length: tickCount }, (_, index) => {
+    const value = maxEquity - (index / (tickCount - 1)) * range;
+    return {
+      value,
+      y: padding.top + (index / (tickCount - 1)) * innerHeight,
+    };
+  });
 
   const points = equityCurve.map((point, index) => ({
     ...point,
@@ -76,5 +84,7 @@ export function getChartGeometry(equityCurve, width = 700, height = 260) {
     zeroY: padding.top + (maxEquity / range) * innerHeight,
     minEquity,
     maxEquity,
+    yTicks,
+    padding,
   };
 }
