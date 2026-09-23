@@ -7,6 +7,7 @@ import {
   calculatePerformanceMetrics,
   calculateTradingStatistics,
   EQUITY_PERIODS,
+  filterAndSortTrades,
   filterTradesByPeriod,
   filterTradesByDateRange,
   getStatisticsDateRange,
@@ -557,6 +558,29 @@ function TradeDetail({ trade, onEdit, onDelete }) {
 }
 
 function TradesPage({ trades, loadingTrades, selectedTrade, onSelectTrade, onBack, onEdit, onDelete }) {
+  const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
+  const [filters, setFilters] = useState({
+    date: "all",
+    instrument: "all",
+    direction: "all",
+    timeframe: "all",
+    outcome: "all",
+    strategy: "all",
+    customStart: "",
+    customEnd: "",
+  });
+  const instruments = [...new Set(trades.map((trade) => trade.instrument).filter(Boolean))].sort();
+  const strategies = [...new Set(trades.map((trade) => trade.strategy).filter(Boolean))].sort();
+  const displayedTrades = filterAndSortTrades(trades, filters, sortBy);
+  const filteredStatistics = calculateTradingStatistics(displayedTrades);
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) =>
+    !["customStart", "customEnd"].includes(key) && value !== "all"
+  ).length;
+  const updateFilter = (field, value) => setFilters((current) => ({ ...current, [field]: value }));
+  const clearFilters = () => setFilters({ date: "all", instrument: "all", direction: "all", timeframe: "all", outcome: "all", strategy: "all", customStart: "", customEnd: "" });
+  const formatFilteredMoney = (value) => Number(value).toFixed(2);
+
   return (
     <main className="trades-page">
       <div className="page-heading">
@@ -569,7 +593,7 @@ function TradesPage({ trades, loadingTrades, selectedTrade, onSelectTrade, onBac
           <h1>All trades</h1>
           <p className="muted">Select a trade to review, edit, or delete it.</p>
         </div>
-        <span className="badge">{trades.length} trades</span>
+        <span className="badge">{displayedTrades.length} of {trades.length} trades</span>
       </div>
 
       {loadingTrades ? (
@@ -588,9 +612,90 @@ function TradesPage({ trades, loadingTrades, selectedTrade, onSelectTrade, onBac
                 <h2>Trade history</h2>
                 <p className="muted">Click any trade to see its full journal entry.</p>
               </div>
+              <button type="button" className={`filter-toggle ${showFilters || activeFilterCount ? "active" : ""}`} onClick={() => setShowFilters((current) => !current)}>
+                Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}
+              </button>
             </div>
+            {showFilters && (
+              <div className="trade-filters">
+                <div className="filter-grid">
+                  <label>Date
+                    <select value={filters.date} onChange={(event) => updateFilter("date", event.target.value)}>
+                      <option value="all">All dates</option>
+                      <option value="today">Today</option>
+                      <option value="week">This week</option>
+                      <option value="month">This month</option>
+                      <option value="30">Last 30 days</option>
+                      <option value="custom">Custom range</option>
+                    </select>
+                  </label>
+                  <label>Instrument
+                    <select value={filters.instrument} onChange={(event) => updateFilter("instrument", event.target.value)}>
+                      <option value="all">All instruments</option>
+                      {instruments.map((instrument) => <option key={instrument} value={instrument}>{instrument}</option>)}
+                    </select>
+                  </label>
+                  <label>Direction
+                    <select value={filters.direction} onChange={(event) => updateFilter("direction", event.target.value)}>
+                      <option value="all">All directions</option><option>Buy</option><option>Sell</option>
+                    </select>
+                  </label>
+                  <label>Timeframe
+                    <select value={filters.timeframe} onChange={(event) => updateFilter("timeframe", event.target.value)}>
+                      <option value="all">All timeframes</option>
+                      {['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'].map((timeframe) => <option key={timeframe}>{timeframe}</option>)}
+                    </select>
+                  </label>
+                  <label>Outcome
+                    <select value={filters.outcome} onChange={(event) => updateFilter("outcome", event.target.value)}>
+                      <option value="all">All outcomes</option><option>Win</option><option>Loss</option><option>Breakeven</option>
+                    </select>
+                  </label>
+                  <label>Strategy
+                    <select value={filters.strategy} onChange={(event) => updateFilter("strategy", event.target.value)}>
+                      <option value="all">All strategies</option>
+                      {strategies.map((strategy) => <option key={strategy} value={strategy}>{strategy}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {filters.date === "custom" && (
+                  <div className="filter-date-range">
+                    <label>From<input type="date" value={filters.customStart} onChange={(event) => updateFilter("customStart", event.target.value)} /></label>
+                    <label>To<input type="date" value={filters.customEnd} onChange={(event) => updateFilter("customEnd", event.target.value)} /></label>
+                  </div>
+                )}
+                <div className="filter-actions">
+                  <span className="muted">{displayedTrades.length} matching trades</span>
+                  <button type="button" className="secondary-button" onClick={clearFilters}>Clear filters</button>
+                </div>
+              </div>
+            )}
+            <div className="filtered-statistics">
+              <div><span>Total Trades</span><strong>{filteredStatistics.totalTrades}</strong></div>
+              <div><span>Win Rate</span><strong>{filteredStatistics.winRate.toFixed(1)}%</strong></div>
+              <div><span>Total P&amp;L</span><strong className={filteredStatistics.totalPnL >= 0 ? "positive-text" : "negative-text"}>{formatFilteredMoney(filteredStatistics.totalPnL)}</strong></div>
+              <div><span>Average R</span><strong>{filteredStatistics.averageRMultiple.toFixed(2)}R</strong></div>
+              <div><span>Profit Factor</span><strong>{filteredStatistics.profitFactor == null ? "—" : filteredStatistics.profitFactor.toFixed(2)}</strong></div>
+              <div><span>Largest Win</span><strong className="positive-text">{formatFilteredMoney(filteredStatistics.largestWin)}</strong></div>
+              <div><span>Largest Loss</span><strong className="negative-text">{formatFilteredMoney(filteredStatistics.largestLoss)}</strong></div>
+              <div><span>Max Drawdown</span><strong className="negative-text">{formatFilteredMoney(filteredStatistics.maxDrawdown)}</strong></div>
+            </div>
+            <div className="trade-sort-row">
+              <span className="muted">Sort by</span>
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Sort trades">
+                <option value="newest">Newest first</option><option value="oldest">Oldest first</option>
+                <option value="highestPnl">Highest P&amp;L</option><option value="lowestPnl">Lowest P&amp;L</option>
+                <option value="highestR">Highest R-multiple</option><option value="lowestR">Lowest R-multiple</option>
+              </select>
+            </div>
+            {displayedTrades.length === 0 ? (
+              <div className="empty-state filtered-empty-state">
+                <p>No matching trades.</p>
+                <span>Try changing or clearing your filters.</span>
+              </div>
+            ) : (
             <div className="trade-list">
-              {trades.map((trade) => (
+              {displayedTrades.map((trade) => (
                 <button
                   className={`trade-row trade-row-button ${selectedTrade?.id === trade.id ? "selected" : ""}`}
                   key={trade.id}
@@ -608,6 +713,7 @@ function TradesPage({ trades, loadingTrades, selectedTrade, onSelectTrade, onBac
                 </button>
               ))}
             </div>
+            )}
           </section>
 
           {selectedTrade ? (

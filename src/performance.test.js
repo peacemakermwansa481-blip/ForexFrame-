@@ -3,6 +3,7 @@ import {
   buildEquityCurve,
   calculatePerformanceMetrics,
   calculateTradingStatistics,
+  filterAndSortTrades,
   filterTradesByDateRange,
   filterTradesByPeriod,
   getStatisticsDateRange,
@@ -70,6 +71,24 @@ describe("equity curve", () => {
     ], range.start, range.end);
 
     expect(selectedTrades.map(({ id }) => id)).toEqual(["inside", "today"]);
+  });
+
+  it("applies multiple filters together and sorts without mutating the source", () => {
+    const source = [
+      { id: "one", trade_date: "2026-02-01", instrument: "XAU/USD", direction: "Buy", timeframe: "H1", outcome: "Win", strategy: "Breakout", simulated_pnl: 50, r_multiple: 2 },
+      { id: "two", trade_date: "2026-02-02", instrument: "XAU/USD", direction: "Sell", timeframe: "H1", outcome: "Win", strategy: "Breakout", simulated_pnl: 100, r_multiple: 1 },
+      { id: "three", trade_date: "2026-02-03", instrument: "EUR/USD", direction: "Buy", timeframe: "H1", outcome: "Win", strategy: "Breakout", simulated_pnl: 200, r_multiple: 3 },
+    ];
+    const result = filterAndSortTrades(source, {
+      date: "all", instrument: "XAU/USD", direction: "all", timeframe: "H1", outcome: "Win", strategy: "Breakout",
+    }, "highestPnl");
+
+    expect(result.map(({ id }) => id)).toEqual(["two", "one"]);
+    expect(filterAndSortTrades(source, {
+      date: "all", instrument: "XAU/USD", direction: "Buy", timeframe: "H1", outcome: "Win", strategy: "Breakout",
+    }).map(({ id }) => id)).toEqual(["one"]);
+    expect(source.map(({ id }) => id)).toEqual(["one", "two", "three"]);
+    expect(filterAndSortTrades(source, { date: "all", instrument: "GBP/USD" })).toEqual([]);
   });
 
   it("handles empty statistics without division errors", () => {

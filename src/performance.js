@@ -224,3 +224,47 @@ export function calculateTradingStatistics(trades = []) {
     losingStreak,
   };
 }
+
+export const TRADE_SORT_OPTIONS = [
+  "newest",
+  "oldest",
+  "highestPnl",
+  "lowestPnl",
+  "highestR",
+  "lowestR",
+];
+
+function normalizedText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+export function filterAndSortTrades(trades = [], filters = {}, sortBy = "newest", now = new Date()) {
+  if (filters.date === "custom" && (!filters.customStart || !filters.customEnd)) return [];
+
+  const dateRange = getStatisticsDateRange(
+    filters.date || "all",
+    now,
+    filters.customStart || "",
+    filters.customEnd || ""
+  );
+
+  let result = filterTradesByDateRange(trades, dateRange.start, dateRange.end);
+  const matches = (field) => !filters[field] || filters[field] === "all";
+
+  result = result.filter((trade) =>
+    (matches("instrument") || normalizedText(trade.instrument) === normalizedText(filters.instrument)) &&
+    (matches("direction") || normalizedText(trade.direction) === normalizedText(filters.direction)) &&
+    (matches("timeframe") || normalizedText(trade.timeframe) === normalizedText(filters.timeframe)) &&
+    (matches("outcome") || normalizedText(trade.outcome) === normalizedText(filters.outcome)) &&
+    (matches("strategy") || normalizedText(trade.strategy) === normalizedText(filters.strategy))
+  );
+
+  return result.sort((a, b) => {
+    if (sortBy === "oldest") return new Date(a.trade_date) - new Date(b.trade_date);
+    if (sortBy === "highestPnl") return normalizedProfitLoss(b) - normalizedProfitLoss(a);
+    if (sortBy === "lowestPnl") return normalizedProfitLoss(a) - normalizedProfitLoss(b);
+    if (sortBy === "highestR") return numericValue(b.r_multiple) - numericValue(a.r_multiple);
+    if (sortBy === "lowestR") return numericValue(a.r_multiple) - numericValue(b.r_multiple);
+    return new Date(b.trade_date) - new Date(a.trade_date);
+  });
+}
