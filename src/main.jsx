@@ -2,6 +2,13 @@ import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import { supabase } from "./supabase";
+import {
+  buildEquityCurve,
+  calculatePerformanceMetrics,
+  getChartGeometry,
+  numericValue,
+  sortTradesChronologically,
+} from "./performance";
 
 const emptyTrade = {
   trade_date: new Date().toISOString().slice(0, 16),
@@ -465,53 +472,13 @@ onClose();
               className="primary-button"
               disabled={saving}
             >
-             type="submit" className="primary-button">
-  {initialTrade ? "Update Simulated Trade" : "Save Simulated Trade"}
-</button>
+              {initialTrade ? "Update Simulated Trade" : "Save Simulated Trade"}
+            </button>
           </div>
         </form>
       </div>
     </div>
   );
-}
-
-function calculatePerformanceMetrics(trades) {
-  if (trades.length === 0) {
-    return {
-      bestTrade: 0,
-      worstTrade: 0,
-      maxDrawdown: 0,
-    };
-  }
-
-  const orderedTrades = [...trades].sort(
-    (a, b) =>
-      new Date(a.trade_date) - new Date(b.trade_date)
-  );
-
-  let runningTotal = 0;
-  let peak = 0;
-  let maxDrawdown = 0;
-
-  const profits = orderedTrades.map((trade) =>
-    Number(trade.simulated_pnl || 0)
-  );
-
-  profits.forEach((profit) => {
-    runningTotal += profit;
-
-    peak = Math.max(peak, runningTotal);
-
-    const drawdown = peak - runningTotal;
-
-    maxDrawdown = Math.max(maxDrawdown, drawdown);
-  });
-
-  return {
-    bestTrade: Math.max(...profits),
-    worstTrade: Math.min(...profits),
-    maxDrawdown,
-  };
 }
 
 function Dashboard({ user }) {
@@ -553,20 +520,21 @@ const [selectedTrade, setSelectedTrade] = useState(null);
     totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0;
 
   const simulatedPL = trades.reduce(
-    (total, trade) => total + Number(trade.simulated_pnl || 0),
+    (total, trade) => total + numericValue(trade.simulated_pnl),
     0
   );
 
   const averageR =
     totalTrades > 0
       ? trades.reduce(
-          (total, trade) => total + Number(trade.r_multiple || 0),
+          (total, trade) => total + numericValue(trade.r_multiple),
           0
         ) / totalTrades
       : 0;
-  const performanceMetrics =
-    calculatePerformanceMetrics(trades);
-                                
+  const performanceMetrics = calculatePerformanceMetrics(trades);
+  const equityCurve = buildEquityCurve(trades);
+  const chartGeometry = getChartGeometry(equityCurve);
+  const orderedTrades = sortTradesChronologically(trades);
 
   return (
     <div className="app">
@@ -656,65 +624,48 @@ const [selectedTrade, setSelectedTrade] = useState(null);
               </span>
             </div>
 
-           <div className="real-chart">
-  <svg viewBox="0 0 700 260" preserveAspectRatio="none">
-    {trades.length > 0 && (
-      <polyline
-        points={trades
-          .slice()
-          .sort(
-            (a, b) =>
-              new Date(a.trade_date) - new Date(b.trade_date)
-          )
-          .map((trade, index, orderedTrades) => {
-            const pnl = orderedTrades
-              .slice(0, index + 1)
-              .reduce(
-                (total, item) =>
-                  total + Number(item.simulated_pnl || 0),
-                0
-              );
+            <div className="real-chart">
+              {trades.length > 0 ? (
+                <svg viewBox="0 0 700 260" role="img" aria-label="Cumulative simulated equity curve">
+                  <line
+                    x1="25"
+                    x2="675"
+                    y1={chartGeometry.zeroY}
+                    y2={chartGeometry.zeroY}
+                    className="chart-zero-line"
+                  />
+                  <polyline
+                    points={chartGeometry.points.map(({ x, y }) => `${x},${y}`).join(" ")}
+                    className="performance-line"
+                  />
+                  {chartGeometry.points.slice(1).map(({ x, y, trade, equity }) => (
+                    <circle
+                      key={trade.id ?? `${x}-${y}`}
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      className="chart-point"
+                    >
+                      <title>
+                        {new Date(trade.trade_date).toLocaleDateString()} — {equity.toFixed(2)}
+                      </title>
+                    </circle>
+                  ))}
+                </svg>
+              ) : (
+                <div className="empty-state">
+                  <p>No equity data yet.</p>
+                  <span>Add a trade to plot cumulative simulated P/L.</span>
+                </div>
+              )}
 
-            const maxPnl = Math.max(
-              0,
-              ...orderedTrades.map((item) =>
-                Number(item.simulated_pnl || 0)
-              )
-            );
-
-            const minPnl = Math.min(
-              0,
-              ...orderedTrades.map((item) =>
-                Number(item.simulated_pnl || 0)
-              )
-            );
-
-            const range = maxPnl - minPnl || 1;
-
-            const x =
-              orderedTrades.length === 1
-                ? 350
-                : 25 +
-                  (index / (orderedTrades.length - 1)) *
-                    650;
-
-            const y =
-              235 -
-              ((pnl - minPnl) / range) * 210;
-
-            return `${x},${y}`;
-          })
-          .join(" ")}
-        className="performance-line"
-      />
-    )}
-  </svg>
-
-  <div className="chart-labels">
-    <span>Time</span>
-    <span>Simulated P/L</span>
-  </div>
-</div>
+              {trades.length > 0 && (
+                <div className="chart-labels">
+                  <span>{new Date(orderedTrades[0].trade_date).toLocaleDateString()}</span>
+                  <span>{new Date(orderedTrades[orderedTrades.length - 1].trade_date).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="card">
