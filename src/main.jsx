@@ -5,8 +5,11 @@ import { supabase } from "./supabase";
 import {
   buildEquityCurve,
   calculatePerformanceMetrics,
+  calculateTradingStatistics,
   EQUITY_PERIODS,
   filterTradesByPeriod,
+  filterTradesByDateRange,
+  getStatisticsDateRange,
   getChartGeometry,
   numericValue,
   sortTradesChronologically,
@@ -487,6 +490,7 @@ function Icon({ name, size = 20 }) {
   const paths = {
     arrowLeft: "M19 12H5m7 7-7-7 7-7",
     book: "M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5m0-16v16M4 5.5V3h2.5",
+    chart: "M4 19V5m0 14h16M8 16v-4m4 4V8m4 8V5m4 11V3",
     pencil: "M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z",
     trash: "M3 6h18m-2 0v14H5V6m3 0V3h8v3m-7 4v8m4-8v8",
   };
@@ -625,9 +629,10 @@ function Dashboard({ user }) {
   const [trades, setTrades] = useState([]);
 const [showModal, setShowModal] = useState(false);
 const [loadingTrades, setLoadingTrades] = useState(true);
-const [selectedTrade, setSelectedTrade] = useState(null);
+  const [selectedTrade, setSelectedTrade] = useState(null);
   const [equityPeriod, setEquityPeriod] = useState(30);
   const [showTradesPage, setShowTradesPage] = useState(false);
+  const [showStatisticsPage, setShowStatisticsPage] = useState(false);
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -635,6 +640,7 @@ const [selectedTrade, setSelectedTrade] = useState(null);
     const { data, error } = await supabase
       .from("trades")
       .select("*")
+      .eq("user_id", user.id)
       .order("trade_date", { ascending: false });
 
     if (!error) {
@@ -707,6 +713,29 @@ const [selectedTrade, setSelectedTrade] = useState(null);
       month: "short",
       day: "numeric",
     });
+
+  if (showStatisticsPage) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <div>
+            <div className="logo">ForexFrame</div>
+            <div className="subtitle">Trading Journal</div>
+          </div>
+          <div className="profile-area">
+            <span className="user-email">{user.email}</span>
+            <button className="profile" onClick={handleLogout}>
+              {user.email?.charAt(0).toUpperCase() || "U"}
+            </button>
+          </div>
+        </header>
+        <StatisticsPage
+          trades={trades}
+          onBack={() => setShowStatisticsPage(false)}
+        />
+      </div>
+    );
+  }
 
   if (showTradesPage) {
     return (
@@ -934,6 +963,17 @@ const [selectedTrade, setSelectedTrade] = useState(null);
             <span className="launcher-count">{totalTrades}</span>
           </button>
         </section>
+
+        <section className="dashboard-launchers">
+          <button className="card statistics-launcher" type="button" onClick={() => setShowStatisticsPage(true)}>
+            <span className="launcher-icon"><Icon name="chart" size={28} /></span>
+            <span className="launcher-copy">
+              <strong>Trading statistics</strong>
+              <span>Review win rate, P&amp;L, drawdown, streaks, and more</span>
+            </span>
+            <span className="launcher-arrow">→</span>
+          </button>
+        </section>
       </main>
 
       {showModal && (
@@ -986,3 +1026,100 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <App />
   </React.StrictMode>
 );
+
+function StatisticsPage({ trades, onBack }) {
+  const [period, setPeriod] = useState("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const range = getStatisticsDateRange(period, new Date(), customStart, customEnd);
+  const isCustomRangeReady = period !== "custom" || (customStart && customEnd);
+  const periodTrades = isCustomRangeReady ? filterTradesByDateRange(trades, range.start, range.end) : [];
+  const statistics = calculateTradingStatistics(periodTrades);
+  const formatMoney = (value) => Number(value).toFixed(2);
+  const formatProfitFactor = (value) => value == null ? "—" : Number(value).toFixed(2);
+
+  const primaryStats = [
+    ["Total Trades", statistics.totalTrades, "number"],
+    ["Win Rate", `${statistics.winRate.toFixed(1)}%`, "number"],
+    ["Total P&L", formatMoney(statistics.totalPnL), statistics.totalPnL >= 0 ? "positive" : "negative"],
+    ["Profit Factor", formatProfitFactor(statistics.profitFactor), "number"],
+    ["Average R", `${statistics.averageRMultiple.toFixed(2)}R`, "number"],
+    ["Max Drawdown", formatMoney(statistics.maxDrawdown), "negative"],
+    ["Largest Win", formatMoney(statistics.largestWin), "positive"],
+    ["Largest Loss", formatMoney(statistics.largestLoss), "negative"],
+  ];
+
+  const secondaryStats = [
+    ["Winning Trades", statistics.winningTrades],
+    ["Losing Trades", statistics.losingTrades],
+    ["Breakeven Trades", statistics.breakevenTrades],
+    ["Average Winning Trade", formatMoney(statistics.averageWinningTrade)],
+    ["Average Losing Trade", formatMoney(statistics.averageLosingTrade)],
+    ["Winning Streak", statistics.winningStreak],
+    ["Losing Streak", statistics.losingStreak],
+  ];
+
+  return (
+    <main className="statistics-page">
+      <div className="page-heading">
+        <button className="back-button" type="button" onClick={onBack}>
+          <Icon name="arrowLeft" size={18} />
+          Dashboard
+        </button>
+        <div>
+          <p className="eyebrow">PERFORMANCE ANALYSIS</p>
+          <h1>Trading statistics</h1>
+          <p className="muted">Measure your results using the trades in your journal.</p>
+        </div>
+      </div>
+
+      <section className="card statistics-filter-card">
+        <div className="statistics-filter-header">
+          <div>
+            <h2>Statistics period</h2>
+            <p className="muted">Calculations update from your stored Supabase trades.</p>
+          </div>
+          <span className="badge">{periodTrades.length} trades</span>
+        </div>
+        <div className="statistics-period-controls" role="group" aria-label="Statistics period">
+          <button type="button" className={`period-button ${period === "all" ? "active" : ""}`} onClick={() => setPeriod("all")}>All Time</button>
+          <button type="button" className={`period-button ${period === "today" ? "active" : ""}`} onClick={() => setPeriod("today")}>Today</button>
+          <button type="button" className={`period-button ${period === "week" ? "active" : ""}`} onClick={() => setPeriod("week")}>This Week</button>
+          <button type="button" className={`period-button ${period === "month" ? "active" : ""}`} onClick={() => setPeriod("month")}>This Month</button>
+          <button type="button" className={`period-button ${period === "30" ? "active" : ""}`} onClick={() => setPeriod("30")}>Last 30 Days</button>
+          <button type="button" className={`period-button ${period === "custom" ? "active" : ""}`} onClick={() => setPeriod("custom")}>Custom Range</button>
+        </div>
+        {period === "custom" && (
+          <div className="custom-date-range">
+            <label>From<input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} /></label>
+            <label>To<input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} /></label>
+            {!isCustomRangeReady && <span className="muted">Select both dates to calculate this range.</span>}
+          </div>
+        )}
+      </section>
+
+      <section className="statistics-grid" aria-label="Trading statistics">
+        {primaryStats.map(([label, value, tone]) => (
+          <div className={`card statistic-card ${tone}`} key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </div>
+        ))}
+      </section>
+
+      <section className="card additional-statistics">
+        <div className="card-header">
+          <div>
+            <h2>Additional statistics</h2>
+            <p className="muted">Outcome counts, averages, and streaks for the selected period.</p>
+          </div>
+        </div>
+        <div className="additional-statistics-grid">
+          {secondaryStats.map(([label, value]) => (
+            <div key={label}><span>{label}</span><strong>{value}</strong></div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
