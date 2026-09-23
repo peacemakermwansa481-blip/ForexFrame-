@@ -483,12 +483,151 @@ onClose();
   );
 }
 
+function Icon({ name, size = 20 }) {
+  const paths = {
+    arrowLeft: "M19 12H5m7 7-7-7 7-7",
+    book: "M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5m0-16v16M4 5.5V3h2.5",
+    pencil: "M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z",
+    trash: "M3 6h18m-2 0v14H5V6m3 0V3h8v3m-7 4v8m4-8v8",
+  };
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={paths[name]} />
+    </svg>
+  );
+}
+
+function TradeDetail({ trade, onEdit, onDelete }) {
+  const displayValue = (value) => value || "—";
+
+  return (
+    <article className="trade-detail card">
+      <div className="trade-detail-header">
+        <div>
+          <p className="eyebrow">TRADE DETAILS</p>
+          <h2>{trade.instrument || "Unnamed trade"}</h2>
+          <p className="muted">
+            {trade.direction} · {trade.timeframe} · {new Date(trade.trade_date).toLocaleString()}
+          </p>
+        </div>
+        <div className="trade-detail-actions">
+          <button className="icon-button" type="button" onClick={() => onEdit(trade)} aria-label="Edit trade" title="Edit trade">
+            <Icon name="pencil" />
+          </button>
+          <button className="icon-button danger" type="button" onClick={() => onDelete(trade)} aria-label="Delete trade" title="Delete trade">
+            <Icon name="trash" />
+          </button>
+        </div>
+      </div>
+
+      <div className="trade-detail-grid">
+        <div><span>Outcome</span><strong>{displayValue(trade.outcome)}</strong></div>
+        <div><span>Simulated P/L</span><strong>{numericValue(trade.simulated_pnl).toFixed(2)}</strong></div>
+        <div><span>R-Multiple</span><strong>{numericValue(trade.r_multiple).toFixed(2)}R</strong></div>
+        <div><span>Risk</span><strong>{trade.simulated_risk_percent == null ? "—" : `${trade.simulated_risk_percent}%`}</strong></div>
+        <div><span>Entry Price</span><strong>{displayValue(trade.entry_price)}</strong></div>
+        <div><span>Stop Price</span><strong>{displayValue(trade.stop_price)}</strong></div>
+        <div><span>Target Price</span><strong>{displayValue(trade.target_price)}</strong></div>
+        <div><span>Position Size</span><strong>{displayValue(trade.position_size)}</strong></div>
+        <div className="full-span"><span>Strategy / Setup</span><strong>{displayValue(trade.strategy)}</strong></div>
+        <div className="full-span"><span>Entry Reason</span><p>{displayValue(trade.entry_reason)}</p></div>
+        <div className="full-span"><span>Exit Reason</span><p>{displayValue(trade.exit_reason)}</p></div>
+        <div><span>Emotion</span><strong>{displayValue(trade.emotion)}</strong></div>
+        <div><span>Mistake</span><strong>{displayValue(trade.mistake)}</strong></div>
+        <div className="full-span"><span>Lesson</span><p>{displayValue(trade.lesson)}</p></div>
+      </div>
+    </article>
+  );
+}
+
+function TradesPage({ trades, loadingTrades, selectedTrade, onSelectTrade, onBack, onEdit, onDelete }) {
+  return (
+    <main className="trades-page">
+      <div className="page-heading">
+        <button className="back-button" type="button" onClick={onBack}>
+          <Icon name="arrowLeft" size={18} />
+          Dashboard
+        </button>
+        <div>
+          <p className="eyebrow">TRADING JOURNAL</p>
+          <h1>All trades</h1>
+          <p className="muted">Select a trade to review, edit, or delete it.</p>
+        </div>
+        <span className="badge">{trades.length} trades</span>
+      </div>
+
+      {loadingTrades ? (
+        <div className="card empty-state"><p>Loading trades...</p></div>
+      ) : trades.length === 0 ? (
+        <div className="card empty-state">
+          <div className="empty-icon"><Icon name="book" /></div>
+          <p>No trades recorded yet.</p>
+          <span>Add a simulated trade from the dashboard to begin.</span>
+        </div>
+      ) : (
+        <div className="trades-page-grid">
+          <section className="card all-trades-card">
+            <div className="card-header">
+              <div>
+                <h2>Trade history</h2>
+                <p className="muted">Click any trade to see its full journal entry.</p>
+              </div>
+            </div>
+            <div className="trade-list">
+              {trades.map((trade) => (
+                <button
+                  className={`trade-row trade-row-button ${selectedTrade?.id === trade.id ? "selected" : ""}`}
+                  key={trade.id}
+                  type="button"
+                  onClick={() => onSelectTrade(trade)}
+                >
+                  <div>
+                    <strong>{trade.instrument}</strong>
+                    <span>{new Date(trade.trade_date).toLocaleDateString()} · {trade.direction} · {trade.timeframe}</span>
+                  </div>
+                  <div className={`trade-result ${trade.outcome?.toLowerCase() === "loss" ? "loss" : trade.outcome?.toLowerCase() === "win" ? "win" : "breakeven"}`}>
+                    <strong>{trade.outcome}</strong>
+                    <span>{numericValue(trade.simulated_pnl).toFixed(2)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {selectedTrade ? (
+            <TradeDetail trade={selectedTrade} onEdit={onEdit} onDelete={onDelete} />
+          ) : (
+            <div className="card empty-state trade-detail-placeholder">
+              <div className="empty-icon"><Icon name="book" /></div>
+              <p>Select a trade</p>
+              <span>Its details and edit/delete icons will appear here.</span>
+            </div>
+          )}
+        </div>
+      )}
+    </main>
+  );
+}
+
 function Dashboard({ user }) {
   const [trades, setTrades] = useState([]);
 const [showModal, setShowModal] = useState(false);
 const [loadingTrades, setLoadingTrades] = useState(true);
 const [selectedTrade, setSelectedTrade] = useState(null);
   const [equityPeriod, setEquityPeriod] = useState(30);
+  const [showTradesPage, setShowTradesPage] = useState(false);
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -511,6 +650,25 @@ const [selectedTrade, setSelectedTrade] = useState(null);
 
   async function handleLogout() {
     await supabase.auth.signOut();
+  }
+
+  async function handleDeleteTrade(trade) {
+    const confirmed = window.confirm(`Delete the ${trade.instrument || "selected"} trade? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("trades")
+      .delete()
+      .eq("id", trade.id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      window.alert(`Unable to delete trade: ${error.message}`);
+      return;
+    }
+
+    setTrades((currentTrades) => currentTrades.filter((item) => item.id !== trade.id));
+    setSelectedTrade(null);
   }
 
   const totalTrades = trades.length;
@@ -549,6 +707,47 @@ const [selectedTrade, setSelectedTrade] = useState(null);
       month: "short",
       day: "numeric",
     });
+
+  if (showTradesPage) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <div>
+            <div className="logo">ForexFrame</div>
+            <div className="subtitle">Trading Journal</div>
+          </div>
+          <div className="profile-area">
+            <span className="user-email">{user.email}</span>
+            <button className="profile" onClick={handleLogout}>
+              {user.email?.charAt(0).toUpperCase() || "U"}
+            </button>
+          </div>
+        </header>
+        <TradesPage
+          trades={sortTradesChronologically(trades).reverse()}
+          loadingTrades={loadingTrades}
+          selectedTrade={selectedTrade}
+          onSelectTrade={setSelectedTrade}
+          onBack={() => {
+            setShowTradesPage(false);
+            setSelectedTrade(null);
+          }}
+          onEdit={(trade) => {
+            setSelectedTrade(trade);
+            setShowModal(true);
+          }}
+          onDelete={handleDeleteTrade}
+        />
+        {showModal && (
+          <AddTradeModal
+            onClose={() => setShowModal(false)}
+            onSaved={loadTrades}
+            initialTrade={selectedTrade}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -726,62 +925,14 @@ const [selectedTrade, setSelectedTrade] = useState(null);
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-header">
-              <div>
-                <h2>Recent Trades</h2>
-                <p className="muted">Your latest journal entries.</p>
-              </div>
-            </div>
-
-            {loadingTrades ? (
-              <div className="empty-state">
-                <p>Loading trades...</p>
-              </div>
-            ) : trades.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">锛�</div>
-                <p>No trades recorded yet.</p>
-                <span>Add your first simulated trade to begin.</span>
-              </div>
-            ) : (
-              <div className="trade-list">
-                {trades.slice(0, 5).map((trade) => (
-                  <div
-  className="trade-row"
-  key={trade.id}
-  onClick={() => {
-    setSelectedTrade(trade);
-    setShowModal(true);
-  }}
->
-                    <div>
-                      <strong>{trade.instrument}</strong>
-                      <span>
-                        {trade.direction} - {trade.timeframe}
-                      </span>
-                    </div>
-
-                      <div
-  className={`trade-result ${
-  trade.outcome?.toLowerCase() === "loss"
-    ? "loss"
-    : trade.outcome?.toLowerCase() === "win"
-    ? "win"
-    : "breakeven"
-}`}
->
-  <strong>{trade.outcome}</strong>
-  <span>
-    {Number(trade.simulated_pnl || 0).toFixed(2)}
-  </span>
-</div>
-  
-                      </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <button className="card recent-trades-launcher" type="button" onClick={() => setShowTradesPage(true)}>
+            <span className="launcher-icon"><Icon name="book" size={28} /></span>
+            <span className="launcher-copy">
+              <strong>Recent trades</strong>
+              <span>Open your journal and manage every trade</span>
+            </span>
+            <span className="launcher-count">{totalTrades}</span>
+          </button>
         </section>
       </main>
 
