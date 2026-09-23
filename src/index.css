@@ -182,6 +182,30 @@ label {
   background: #1b232d;
 }
 
+.equity-period-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.period-button {
+  border: 1px solid #26313d;
+  border-radius: 7px;
+  padding: 6px 8px;
+  background: #0f151c;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.period-button:hover,
+.period-button.active {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.18);
+  color: #bfdbfe;
+}
+
 .full-width {
   width: 100%;
 }
@@ -540,6 +564,10 @@ label {
 
   .welcome .primary-button {
     width: 100%;
+  }
+
+  .equity-period-controls {
+    justify-content: flex-start;
   }
 
   .stats-grid {

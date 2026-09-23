@@ -5,6 +5,8 @@ import { supabase } from "./supabase";
 import {
   buildEquityCurve,
   calculatePerformanceMetrics,
+  EQUITY_PERIODS,
+  filterTradesByPeriod,
   getChartGeometry,
   numericValue,
   sortTradesChronologically,
@@ -486,6 +488,7 @@ function Dashboard({ user }) {
 const [showModal, setShowModal] = useState(false);
 const [loadingTrades, setLoadingTrades] = useState(true);
 const [selectedTrade, setSelectedTrade] = useState(null);
+  const [equityPeriod, setEquityPeriod] = useState(30);
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -532,9 +535,10 @@ const [selectedTrade, setSelectedTrade] = useState(null);
         ) / totalTrades
       : 0;
   const performanceMetrics = calculatePerformanceMetrics(trades);
-  const equityCurve = buildEquityCurve(trades);
+  const equityTrades = filterTradesByPeriod(trades, equityPeriod);
+  const equityCurve = buildEquityCurve(equityTrades);
   const chartGeometry = getChartGeometry(equityCurve);
-  const orderedTrades = sortTradesChronologically(trades);
+  const orderedTrades = sortTradesChronologically(equityTrades);
   const formatMoney = (value) =>
     Number(value).toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -629,13 +633,23 @@ const [selectedTrade, setSelectedTrade] = useState(null);
                 </p>
               </div>
 
-              <span className="badge">
-                {totalTrades === 0 ? "No data" : `${totalTrades} trades`}
-              </span>
+              <div className="equity-period-controls" aria-label="Equity curve period">
+                {EQUITY_PERIODS.map((period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    className={`period-button ${equityPeriod === period ? "active" : ""}`}
+                    aria-pressed={equityPeriod === period}
+                    onClick={() => setEquityPeriod(period)}
+                  >
+                    {period} {period === 1 ? "day" : "days"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="real-chart">
-              {trades.length > 0 ? (
+              {equityTrades.length > 0 ? (
                 <svg
                   viewBox="0 0 700 260"
                   role="img"
@@ -700,8 +714,12 @@ const [selectedTrade, setSelectedTrade] = useState(null);
                 </svg>
               ) : (
                 <div className="empty-state">
-                  <p>No equity data yet.</p>
-                  <span>Add a trade to plot cumulative simulated P/L.</span>
+                  <p>{totalTrades === 0 ? "No equity data yet." : "No trades in this period."}</p>
+                  <span>
+                    {totalTrades === 0
+                      ? "Add a trade to plot cumulative simulated P/L."
+                      : "Choose a longer period to see more of your equity curve."}
+                  </span>
                 </div>
               )}
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEquityCurve,
   calculatePerformanceMetrics,
+  filterTradesByPeriod,
   getChartGeometry,
 } from "./performance";
 
@@ -16,6 +17,19 @@ describe("equity curve", () => {
     expect(buildEquityCurve(trades).map(({ equity }) => equity)).toEqual([
       0, 100, 80, 110,
     ]);
+  });
+
+  it("filters the curve to the selected number of calendar days", () => {
+    expect(
+      filterTradesByPeriod(
+        [
+          { id: "old", trade_date: "2026-01-01T12:00:00Z", simulated_pnl: 5 },
+          { id: "recent", trade_date: "2026-01-06T12:00:00Z", simulated_pnl: 10 },
+          { id: "latest", trade_date: "2026-01-07T12:00:00Z", simulated_pnl: 15 },
+        ],
+        2
+      ).map(({ id }) => id)
+    ).toEqual(["recent", "latest"]);
   });
 
   it("calculates drawdown from cumulative equity peaks", () => {

@@ -14,6 +14,30 @@ export function sortTradesChronologically(trades = []) {
   });
 }
 
+export const EQUITY_PERIODS = [1, 7, 30, 90, 180, 365];
+
+export function filterTradesByPeriod(trades = [], periodDays = 30) {
+  const orderedTrades = sortTradesChronologically(trades);
+  if (orderedTrades.length === 0) return [];
+
+  const latestDate = new Date(orderedTrades[orderedTrades.length - 1].trade_date);
+  if (!Number.isFinite(latestDate.getTime())) return orderedTrades;
+
+  const latestDay = new Date(latestDate);
+  latestDay.setHours(0, 0, 0, 0);
+  const cutoff = new Date(latestDay);
+  cutoff.setDate(cutoff.getDate() - Math.max(0, Number(periodDays) - 1));
+
+  return orderedTrades.filter((trade) => {
+    const tradeDate = new Date(trade.trade_date);
+    return (
+      Number.isFinite(tradeDate.getTime()) &&
+      tradeDate >= cutoff &&
+      tradeDate <= latestDate
+    );
+  });
+}
+
 /**
  * Returns the account equity after every trade, including the zero starting
  * point. The chart can therefore show both the starting balance and the
