@@ -386,17 +386,24 @@ export function calculateBacktestResults(trades = [], startingBalance = 0) {
   let balance = numericValue(startingBalance);
   let peak = balance;
   let maxDrawdown = 0;
+  let maxDrawdownPercent = 0;
   const equityCurve = [{ trade: null, balance }];
+  const drawdownCurve = [{ trade: null, drawdown: 0, drawdownPercent: 0 }];
   ordered.forEach((trade) => {
     balance += normalizedProfitLoss(trade);
     peak = Math.max(peak, balance);
     maxDrawdown = Math.max(maxDrawdown, peak - balance);
+    const drawdown = peak - balance;
+    const drawdownPercent = peak > 0 ? (drawdown / peak) * 100 : 0;
+    maxDrawdownPercent = Math.max(maxDrawdownPercent, drawdownPercent);
     equityCurve.push({ trade, balance });
+    drawdownCurve.push({ trade, drawdown, drawdownPercent });
   });
   return {
     startingBalance: numericValue(startingBalance),
     endingBalance: balance,
     netPnL: statistics.totalPnL,
+    returnPercent: numericValue(startingBalance) ? (statistics.totalPnL / numericValue(startingBalance)) * 100 : 0,
     totalTrades: statistics.totalTrades,
     wins: statistics.winningTrades,
     losses: statistics.losingTrades,
@@ -407,6 +414,10 @@ export function calculateBacktestResults(trades = [], startingBalance = 0) {
     averageR: statistics.averageRMultiple,
     profitFactor: statistics.profitFactor,
     maxDrawdown,
+    maxDrawdownPercent,
+    largestWin: statistics.largestWin,
+    largestLoss: statistics.largestLoss,
     equityCurve,
+    drawdownCurve,
   };
 }

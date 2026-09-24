@@ -229,7 +229,7 @@ export class ReplayController {
   closeAt(exitPrice, reason, candle) {
     const position = this.position;
     const pnl = position.direction === "Buy" ? (exitPrice - position.entry) * position.positionSize : (position.entry - exitPrice) * position.positionSize;
-    const trade = { trade_date: candle.timestamp, instrument: this.config.instrument, direction: position.direction, entry: position.entry, exit_price: exitPrice, stop_loss: position.stopLoss, take_profit: position.takeProfit, position_size: position.positionSize, risk_percent: position.riskPercent, simulated_pnl: Number(pnl.toFixed(2)), r_multiple: position.riskAmount ? Number((pnl / position.riskAmount).toFixed(4)) : 0, outcome: pnl > 0 ? "Win" : pnl < 0 ? "Loss" : "Breakeven", strategy: this.config.strategyName, exit_reason: reason };
+    const trade = { trade_date: candle.timestamp, entry_time: position.openedAt, instrument: this.config.instrument, direction: position.direction, entry: position.entry, exit_price: exitPrice, stop_loss: position.stopLoss, take_profit: position.takeProfit, position_size: position.positionSize, risk_percent: position.riskPercent, simulated_pnl: Number(pnl.toFixed(2)), r_multiple: position.riskAmount ? Number((pnl / position.riskAmount).toFixed(4)) : 0, outcome: pnl > 0 ? "Win" : pnl < 0 ? "Loss" : "Breakeven", strategy: this.config.strategyName, exit_reason: reason };
     this.balance += trade.simulated_pnl;
     this.position = null;
     this.peak = Math.max(this.peak, this.balance);

@@ -31,6 +31,7 @@ create table if not exists public.backtest_trades (
   backtest_id uuid not null references public.backtests(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   trade_date timestamptz not null,
+  entry_time timestamptz,
   instrument text not null,
   direction text not null check (direction in ('Buy', 'Sell')),
   entry numeric(18, 8) not null,
