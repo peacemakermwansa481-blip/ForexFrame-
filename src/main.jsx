@@ -763,6 +763,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const [showStatisticsPage, setShowStatisticsPage] = useState(false);
   const [showPsychologyPage, setShowPsychologyPage] = useState(false);
   const [showAnalyticsPage, setShowAnalyticsPage] = useState(false);
+  const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -845,6 +846,21 @@ const [loadingTrades, setLoadingTrades] = useState(true);
       day: "numeric",
     });
 
+  if (showAnalyticsHub) {
+    return (
+      <div className="app">
+        <header className="topbar"><div><div className="logo">ForexFrame</div><div className="subtitle">Trading Journal</div></div><div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div></header>
+        <AnalyticsHub
+          onBack={() => setShowAnalyticsHub(false)}
+          onStatistics={() => { setShowAnalyticsHub(false); setShowStatisticsPage(true); }}
+          onAdvanced={() => { setShowAnalyticsHub(false); setShowAnalyticsPage(true); }}
+          onPsychology={() => { setShowAnalyticsHub(false); setShowPsychologyPage(true); }}
+          onTrades={() => { setShowAnalyticsHub(false); setShowTradesPage(true); }}
+        />
+      </div>
+    );
+  }
+
   if (showPsychologyPage) {
     return (
       <div className="app">
@@ -852,7 +868,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
           <div><div className="logo">ForexFrame</div><div className="subtitle">Trading Journal</div></div>
           <div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div>
         </header>
-        <PsychologyPage trades={trades} onBack={() => setShowPsychologyPage(false)} />
+        <PsychologyPage trades={trades} onBack={() => { setShowPsychologyPage(false); setShowAnalyticsHub(true); }} />
       </div>
     );
   }
@@ -861,7 +877,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
     return (
       <div className="app">
         <header className="topbar"><div><div className="logo">ForexFrame</div><div className="subtitle">Trading Journal</div></div><div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div></header>
-        <AdvancedAnalyticsPage trades={trades} onBack={() => setShowAnalyticsPage(false)} />
+        <AdvancedAnalyticsPage trades={trades} onBack={() => { setShowAnalyticsPage(false); setShowAnalyticsHub(true); }} />
       </div>
     );
   }
@@ -883,7 +899,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
         </header>
         <StatisticsPage
           trades={trades}
-          onBack={() => setShowStatisticsPage(false)}
+          onBack={() => { setShowStatisticsPage(false); setShowAnalyticsHub(true); }}
         />
       </div>
     );
@@ -912,6 +928,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
           onBack={() => {
             setShowTradesPage(false);
             setSelectedTrade(null);
+            setShowAnalyticsHub(true);
           }}
           onEdit={(trade) => {
             setSelectedTrade(trade);
@@ -1121,22 +1138,9 @@ const [loadingTrades, setLoadingTrades] = useState(true);
         </section>
 
         <section className="dashboard-launchers">
-          <button className="card statistics-launcher" type="button" onClick={() => setShowStatisticsPage(true)}>
+          <button className="card analytics-launcher" type="button" onClick={() => setShowAnalyticsHub(true)}>
             <span className="launcher-icon"><Icon name="chart" size={28} /></span>
-            <span className="launcher-copy">
-              <strong>Trading statistics</strong>
-              <span>Review win rate, P&amp;L, drawdown, streaks, and more</span>
-            </span>
-            <span className="launcher-arrow">→</span>
-          </button>
-          <button className="card psychology-launcher" type="button" onClick={() => setShowPsychologyPage(true)}>
-            <span className="launcher-icon"><Icon name="chart" size={28} /></span>
-            <span className="launcher-copy"><strong>Trading psychology</strong><span>Explore recorded emotions, mistakes, lessons, and patterns</span></span>
-            <span className="launcher-arrow">→</span>
-          </button>
-          <button className="card analytics-launcher" type="button" onClick={() => setShowAnalyticsPage(true)}>
-            <span className="launcher-icon"><Icon name="chart" size={28} /></span>
-            <span className="launcher-copy"><strong>Advanced analytics</strong><span>Compare performance across your recorded dimensions</span></span>
+            <span className="launcher-copy"><strong>Analytics</strong><span>Open statistics, performance, psychology, and trade analysis</span></span>
             <span className="launcher-arrow">→</span>
           </button>
         </section>
@@ -1365,4 +1369,22 @@ function AdvancedAnalyticsPage({ trades, onBack }) {
   return <main className="analytics-page"><div className="page-heading"><button className="back-button" type="button" onClick={onBack}><Icon name="arrowLeft" size={18} />Dashboard</button><div><p className="eyebrow">TRADING JOURNAL</p><h1>Advanced analytics</h1><p className="muted">Break down recorded performance by instrument, strategy, timeframe, direction, and day.</p></div><span className="badge">{filteredTrades.length} trades</span></div>
     <section className="card analytics-filter-card"><div className="analytics-filter-heading"><div><h2>Analytics filters</h2><p className="muted">All sections recalculate from matching trades.</p></div><button type="button" className={`filter-toggle ${showFilters || activeFilterCount ? "active" : ""}`} onClick={() => setShowFilters((value) => !value)}>Filters{activeFilterCount ? ` (${activeFilterCount})` : ""}</button></div>{showFilters && <div className="filter-grid analytics-filters"><label>Date<select value={filters.date} onChange={(event) => updateFilter("date", event.target.value)}><option value="all">All dates</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option><option value="30">Last 30 days</option><option value="custom">Custom range</option></select></label><label>Instrument<select value={filters.instrument} onChange={(event) => updateFilter("instrument", event.target.value)}><option value="all">All instruments</option>{instruments.map((value) => <option key={value}>{value}</option>)}</select></label><label>Direction<select value={filters.direction} onChange={(event) => updateFilter("direction", event.target.value)}><option value="all">All directions</option><option>Buy</option><option>Sell</option></select></label><label>Timeframe<select value={filters.timeframe} onChange={(event) => updateFilter("timeframe", event.target.value)}><option value="all">All timeframes</option>{["M1", "M5", "M15", "M30", "H1", "H4", "D1"].map((value) => <option key={value}>{value}</option>)}</select></label><label>Strategy<select value={filters.strategy} onChange={(event) => updateFilter("strategy", event.target.value)}><option value="all">All strategies</option>{strategies.map((value) => <option key={value}>{value}</option>)}</select></label><label>Outcome<select value={filters.outcome} onChange={(event) => updateFilter("outcome", event.target.value)}><option value="all">All outcomes</option><option>Win</option><option>Loss</option><option>Breakeven</option></select></label>{filters.date === "custom" && <><label>From<input type="date" value={filters.customStart} onChange={(event) => updateFilter("customStart", event.target.value)} /></label><label>To<input type="date" value={filters.customEnd} onChange={(event) => updateFilter("customEnd", event.target.value)} /></label></>}<button type="button" className="secondary-button" onClick={clearFilters}>Clear filters</button></div>}</section>
     {filteredTrades.length === 0 ? <section className="card empty-state"><p>No trades match the selected analytics filters.</p><span>Clear filters or record more trades to compare performance.</span></section> : <><section className="analytics-summary-grid">{summary.map(([label, value]) => <div className="card" key={label}><span>{label}</span><strong>{value}</strong></div>)}</section><AnalyticsBars title="P&L by instrument" groups={analytics.byInstrument} /><AnalyticsBars title="P&L by strategy" groups={analytics.byStrategy} /><AnalyticsBars title="Win rate by timeframe" groups={analytics.byTimeframe} valueKey="winRate" suffix="%" /><AnalyticsBars title="P&L by day" groups={analytics.byDay} /><AnalyticsTable title="Performance by instrument" groups={analytics.byInstrument} /><AnalyticsTable title="Performance by strategy" groups={analytics.byStrategy} /><AnalyticsTable title="Performance by timeframe" groups={analytics.byTimeframe} compact /><AnalyticsTable title="Buy vs Sell performance" groups={analytics.byDirection} /><AnalyticsTable title="Performance by day of week" groups={analytics.byDay} compact /><section className="card analytics-section"><div className="card-header"><div><h2>Data insights</h2><p className="muted">Factual observations from the selected trades.</p></div></div><ul className="insight-list">{insights.length ? insights.map((insight) => <li key={insight}>{insight}</li>) : <li>Not enough recorded trades for meaningful comparisons yet.</li>}</ul></section></>}</main>;
+}
+
+function AnalyticsHub({ onBack, onStatistics, onAdvanced, onPsychology, onTrades }) {
+  const tiles = [
+    { key: "overview", title: "Trading statistics", description: "Win rate, P&L, drawdown, streaks, and core performance metrics", action: onStatistics },
+    { key: "performance", title: "Advanced performance", description: "Compare instruments, strategies, timeframes, directions, and weekdays", action: onAdvanced },
+    { key: "psychology", title: "Trading psychology", description: "Review recorded emotions, mistakes, lessons, and repeated patterns", action: onPsychology },
+    { key: "trades", title: "Trade analysis", description: "Filter, sort, and open detailed trade analysis with edit and delete actions", action: onTrades },
+  ];
+  return <main className="analytics-hub-page">
+    <div className="page-heading"><button className="back-button" type="button" onClick={onBack}><Icon name="arrowLeft" size={18} />Dashboard</button><div><p className="eyebrow">TRADING JOURNAL</p><h1>Analytics</h1><p className="muted">Choose an analytical tool without leaving your journal workflow.</p></div></div>
+    <section className="analytics-hub-grid">
+      <div className="analytics-hub-group"><p className="eyebrow">OVERVIEW</p><button className="card analytics-hub-tile" type="button" onClick={onStatistics}><span className="launcher-icon"><Icon name="chart" size={25} /></span><span className="launcher-copy"><strong>Trading statistics</strong><span>{tiles[0].description}</span></span><span className="launcher-arrow">→</span></button></div>
+      <div className="analytics-hub-group"><p className="eyebrow">PERFORMANCE</p><button className="card analytics-hub-tile" type="button" onClick={onAdvanced}><span className="launcher-icon"><Icon name="chart" size={25} /></span><span className="launcher-copy"><strong>Advanced performance</strong><span>{tiles[1].description}</span></span><span className="launcher-arrow">→</span></button></div>
+      <div className="analytics-hub-group"><p className="eyebrow">PSYCHOLOGY</p><button className="card analytics-hub-tile" type="button" onClick={onPsychology}><span className="launcher-icon"><Icon name="chart" size={25} /></span><span className="launcher-copy"><strong>Trading psychology</strong><span>{tiles[2].description}</span></span><span className="launcher-arrow">→</span></button></div>
+      <div className="analytics-hub-group"><p className="eyebrow">TRADE ANALYSIS</p><button className="card analytics-hub-tile" type="button" onClick={onTrades}><span className="launcher-icon"><Icon name="book" size={25} /></span><span className="launcher-copy"><strong>Detailed trade analysis</strong><span>{tiles[3].description}</span></span><span className="launcher-arrow">→</span></button></div>
+    </section>
+  </main>;
 }

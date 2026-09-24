@@ -1301,3 +1301,16 @@ label {
   .analytics-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .analytics-bar-row { grid-template-columns: 95px minmax(0, 1fr) 62px; gap: 7px; }
 }
+
+.analytics-hub-page { width: min(920px, calc(100% - 40px)); margin: 0 auto; padding: 42px 0 60px; }
+.analytics-hub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.analytics-hub-group { display: grid; gap: 9px; }
+.analytics-hub-group .eyebrow { margin: 0; }
+.analytics-hub-tile { width: 100%; min-height: 118px; display: flex; align-items: center; gap: 14px; color: inherit; text-align: left; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+.analytics-hub-tile:hover { border-color: #2563eb; background: #172131; }
+.analytics-hub-tile .launcher-copy span { line-height: 1.5; }
+@media (max-width: 720px) {
+  .analytics-hub-page { width: min(100% - 28px, 920px); padding-top: 28px; }
+  .analytics-hub-grid { grid-template-columns: 1fr; gap: 14px; }
+  .analytics-hub-tile { min-height: 96px; }
+}
