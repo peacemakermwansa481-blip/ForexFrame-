@@ -182,7 +182,9 @@ describe("backtesting engine", () => {
     expect(candles.length).toBeGreaterThan(0);
     expect(candles[0].timestamp).toBe("2026-01-01T00:00:00.000Z");
     expect(candles.every((candle, index) => index === 0 || candle.timestamp > candles[index - 1].timestamp)).toBe(true);
-    await expect(provider.getHistoricalCandles({ instrument: "EUR/USD", timeframe: "H1", startDate: "2026-01-01", endDate: "2026-01-01" })).rejects.toThrow("XAU/USD");
+    const forexCandles = await provider.getHistoricalCandles({ instrument: "EUR/USD", timeframe: "H1", startDate: "2026-01-01", endDate: "2026-01-01" });
+    expect(forexCandles).toEqual(candles);
+    await expect(provider.getHistoricalCandles({ instrument: "", timeframe: "H1", startDate: "2026-01-01", endDate: "2026-01-01" })).rejects.toThrow("non-empty instrument");
   });
 
   it("rejects invalid candles and uses the conservative stop-first rule", () => {

@@ -21,7 +21,7 @@ export class MockHistoricalDataProvider {
   constructor() { this.label = "DEMO DATA — NOT REAL MARKET DATA"; }
 
   async getHistoricalCandles({ instrument, timeframe, startDate, endDate }) {
-    if (instrument !== "XAU/USD") throw new Error("DEMO provider currently supports XAU/USD only.");
+    if (typeof instrument !== "string" || !instrument.trim()) throw new Error("A non-empty instrument is required for DEMO historical data.");
     if (!SUPPORTED_TIMEFRAMES.includes(timeframe)) throw new Error(`Unsupported timeframe: ${timeframe}.`);
     const start = new Date(`${startDate}T00:00:00Z`);
     const end = new Date(`${endDate}T23:59:59Z`);
