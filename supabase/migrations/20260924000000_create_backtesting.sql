@@ -30,6 +30,7 @@ create table if not exists public.backtest_trades (
   instrument text not null,
   direction text not null check (direction in ('Buy', 'Sell')),
   entry numeric(18, 8) not null,
+  exit_price numeric(18, 8),
   stop_loss numeric(18, 8),
   take_profit numeric(18, 8),
   position_size numeric(18, 8),
@@ -64,9 +65,9 @@ create policy "Users can delete their own backtests" on public.backtests for del
 drop policy if exists "Users can view their own backtest trades" on public.backtest_trades;
 create policy "Users can view their own backtest trades" on public.backtest_trades for select using (auth.uid() = user_id);
 drop policy if exists "Users can create their own backtest trades" on public.backtest_trades;
-create policy "Users can create their own backtest trades" on public.backtest_trades for insert with check (auth.uid() = user_id);
+create policy "Users can create their own backtest trades" on public.backtest_trades for insert with check (auth.uid() = user_id and exists (select 1 from public.backtests where id = backtest_id and user_id = auth.uid()));
 drop policy if exists "Users can update their own backtest trades" on public.backtest_trades;
-create policy "Users can update their own backtest trades" on public.backtest_trades for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "Users can update their own backtest trades" on public.backtest_trades for update using (auth.uid() = user_id) with check (auth.uid() = user_id and exists (select 1 from public.backtests where id = backtest_id and user_id = auth.uid()));
 drop policy if exists "Users can delete their own backtest trades" on public.backtest_trades;
 create policy "Users can delete their own backtest trades" on public.backtest_trades for delete using (auth.uid() = user_id);
 

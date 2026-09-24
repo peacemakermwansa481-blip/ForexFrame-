@@ -1345,3 +1345,13 @@ label {
   .backtest-form-actions button { flex: 1; }
   .backtest-card { align-items: flex-start; flex-direction: column; }
 }
+
+.backtest-engine-panel { margin-bottom: 20px; border-color: #8b5cf6; }
+.backtest-engine-panel .eyebrow { color: #c4b5fd; }
+.backtest-progress { display: grid; gap: 7px; margin: 15px 0; color: #94a3b8; font-size: 12px; }
+.backtest-engine-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+.backtest-engine-actions button:disabled { cursor: not-allowed; opacity: .45; }
+@media (max-width: 720px) {
+  .backtest-engine-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .backtest-engine-actions button { width: 100%; }
+}

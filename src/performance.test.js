@@ -12,6 +12,7 @@ import {
   getStatisticsDateRange,
   getChartGeometry,
 } from "./performance";
+import { MockHistoricalDataProvider, normalizeCandle, runBacktest } from "./backtesting";
 
 describe("equity curve", () => {
   const trades = [
@@ -171,5 +172,29 @@ describe("backtesting results", () => {
 
     expect(result).toMatchObject({ startingBalance: 10000, endingBalance: 10060, netPnL: 60, totalTrades: 2, wins: 1, losses: 1, maxDrawdown: 40 });
     expect(result.equityCurve.map(({ balance }) => balance)).toEqual([10000, 10100, 10060]);
+  });
+});
+
+describe("backtesting engine", () => {
+  it("returns deterministic chronological DEMO candles and filters dates", async () => {
+    const provider = new MockHistoricalDataProvider();
+    const candles = await provider.getHistoricalCandles({ instrument: "XAU/USD", timeframe: "H1", startDate: "2026-01-01", endDate: "2026-01-01" });
+    expect(candles.length).toBeGreaterThan(0);
+    expect(candles[0].timestamp).toBe("2026-01-01T00:00:00.000Z");
+    expect(candles.every((candle, index) => index === 0 || candle.timestamp > candles[index - 1].timestamp)).toBe(true);
+    await expect(provider.getHistoricalCandles({ instrument: "EUR/USD", timeframe: "H1", startDate: "2026-01-01", endDate: "2026-01-01" })).rejects.toThrow("XAU/USD");
+  });
+
+  it("rejects invalid candles and uses the conservative stop-first rule", () => {
+    expect(() => normalizeCandle({ timestamp: "2026-01-01", open: 10, high: 8, low: 9, close: 10 })).toThrow("Invalid candle");
+    const candles = [
+      { timestamp: "2026-01-01T00:00:00Z", open: 100, high: 100, low: 100, close: 100 },
+      { timestamp: "2026-01-01T01:00:00Z", open: 100, high: 104, low: 96, close: 100 },
+      { timestamp: "2026-01-01T02:00:00Z", open: 100, high: 100, low: 100, close: 100 },
+    ];
+    const strategy = { evaluate: ({ history }) => history.length === 1 ? { direction: "Buy", stopLossDistance: 2, takeProfitDistance: 2 } : null };
+    const result = runBacktest({ candles, strategy, startingBalance: 1000, riskPercent: 1 });
+    expect(result.trades[0]).toMatchObject({ outcome: "Loss", simulated_pnl: -10, r_multiple: -1 });
+    expect(result.results.endingBalance).toBe(990);
   });
 });
