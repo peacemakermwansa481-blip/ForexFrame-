@@ -12,7 +12,7 @@ import {
   getStatisticsDateRange,
   getChartGeometry,
 } from "./performance";
-import { MockHistoricalDataProvider, normalizeCandle, runBacktest } from "./backtesting";
+import { MockHistoricalDataProvider, ReplayController, normalizeCandle, runBacktest } from "./backtesting";
 
 describe("equity curve", () => {
   const trades = [
@@ -196,5 +196,27 @@ describe("backtesting engine", () => {
     const result = runBacktest({ candles, strategy, startingBalance: 1000, riskPercent: 1 });
     expect(result.trades[0]).toMatchObject({ outcome: "Loss", simulated_pnl: -10, r_multiple: -1 });
     expect(result.results.endingBalance).toBe(990);
+  });
+
+  it("reveals exactly one candle at a time and keeps future candles hidden", async () => {
+    const provider = new MockHistoricalDataProvider();
+    const controller = new ReplayController({ provider, config: { instrument: "XAU/USD", timeframe: "H1", startDate: "2026-01-01", endDate: "2026-01-01", startingBalance: 1000, strategyName: "Replay test" } });
+    await controller.load();
+    expect(controller.snapshot().visibleCandles).toHaveLength(0);
+    controller.next();
+    expect(controller.snapshot().visibleCandles).toHaveLength(1);
+    const firstTimestamp = controller.currentCandle().timestamp;
+    controller.next();
+    expect(controller.snapshot().visibleCandles).toHaveLength(2);
+    expect(new Date(controller.snapshot().visibleCandles.at(-1).timestamp).getTime()).toBeGreaterThan(new Date(firstTimestamp).getTime());
+  });
+
+  it("opens and manually closes an isolated simulated position", () => {
+    const candles = [
+      { timestamp: "2026-01-01T00:00:00Z", open: 100, high: 102, low: 99, close: 100 },
+      { timestamp: "2026-01-01T01:00:00Z", open: 100, high: 103, low: 100, close: 102 },
+    ];
+    const controller = new ReplayController({ provider: { getHistoricalCandles: async () => candles }, config: { instrument: "XAU/USD", timeframe: "H1", startDate: "2026-01-01", endDate: "2026-01-01", startingBalance: 1000, strategyName: "Replay test" } });
+    return controller.load().then(() => { controller.next(); controller.openPosition({ direction: "Buy", entry: 100, stopLoss: 98, takeProfit: 104, riskPercent: 1 }); controller.next(); const trade = controller.closePosition(); expect(trade).toMatchObject({ simulated_pnl: 10, outcome: "Win", r_multiple: 1 }); expect(controller.snapshot().balance).toBe(1010); });
   });
 });

@@ -17,6 +17,10 @@ create table if not exists public.backtests (
   max_simultaneous_positions integer not null default 1 check (max_simultaneous_positions > 0),
   commission_per_trade numeric(18, 6) not null default 0 check (commission_per_trade >= 0),
   status text not null default 'draft' check (status in ('draft', 'in_progress', 'completed', 'archived')),
+  replay_index integer not null default -1 check (replay_index >= -1),
+  replay_balance numeric(18, 2),
+  replay_position jsonb,
+  replay_status text not null default 'idle' check (replay_status in ('idle', 'running', 'paused', 'completed')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint backtests_valid_date_range check (end_date >= start_date)

@@ -102,3 +102,138 @@ export function runBacktest({ candles, strategy, startingBalance, riskPercent = 
   const results = calculateBacktestResults(sortTradesChronologically(trades), startingBalance);
   return { trades, results, processedCandles: orderedCandles.length, lastTimestamp: orderedCandles.at(-1).timestamp };
 }
+
+export class ReplayController {
+  constructor({ provider, config }) {
+    this.provider = provider;
+    this.config = config;
+    this.candles = [];
+    this.index = -1;
+    this.balance = numericValue(config.startingBalance);
+    this.peak = this.balance;
+    this.maxDrawdown = 0;
+    this.position = null;
+    this.status = "idle";
+  }
+
+  async load() {
+    this.candles = await this.provider.getHistoricalCandles({
+      instrument: this.config.instrument,
+      timeframe: this.config.timeframe,
+      startDate: this.config.startDate,
+      endDate: this.config.endDate,
+    });
+    return this.snapshot();
+  }
+
+  restore({ index = -1, balance, position, status = "idle" } = {}) {
+    this.index = Math.max(-1, Math.min(Number(index), this.candles.length - 1));
+    this.balance = Number.isFinite(Number(balance)) ? Number(balance) : numericValue(this.config.startingBalance);
+    this.position = position || null;
+    this.status = status;
+    this.peak = Math.max(numericValue(this.config.startingBalance), this.balance);
+    this.maxDrawdown = Math.max(0, this.peak - this.balance);
+    return this.snapshot();
+  }
+
+  start() {
+    this.status = "running";
+    return this.snapshot();
+  }
+
+  pause() {
+    this.status = "paused";
+    return this.snapshot();
+  }
+
+  finish() {
+    this.status = "completed";
+    return this.snapshot();
+  }
+
+  reset() {
+    this.index = -1;
+    this.balance = numericValue(this.config.startingBalance);
+    this.peak = this.balance;
+    this.maxDrawdown = 0;
+    this.position = null;
+    this.status = "idle";
+    return this.snapshot();
+  }
+
+  next() {
+    if (this.index >= this.candles.length - 1) {
+      this.status = "completed";
+      return { snapshot: this.snapshot(), trade: null };
+    }
+    this.index += 1;
+    const candle = this.candles[this.index];
+    const trade = this.processPosition(candle);
+    if (this.index === this.candles.length - 1) this.status = "completed";
+    return { snapshot: this.snapshot(), trade };
+  }
+
+  previous() {
+    if (this.position || this.index <= 0) return this.snapshot();
+    this.index -= 1;
+    return this.snapshot();
+  }
+
+  openPosition({ direction, entry, stopLoss, takeProfit, riskPercent }) {
+    if (this.index < 0 || this.position) throw new Error("Reveal a candle and ensure no position is open before opening a trade.");
+    if (!["Buy", "Sell"].includes(direction)) throw new Error("Direction must be Buy or Sell.");
+    const price = Number(entry);
+    const stop = Number(stopLoss);
+    const target = Number(takeProfit);
+    const risk = Number(riskPercent);
+    if (![price, stop, target, risk].every(Number.isFinite) || price <= 0 || risk <= 0 || risk > 100) throw new Error("Enter valid entry, stop, target, and risk values.");
+    if ((direction === "Buy" && !(stop < price && target > price)) || (direction === "Sell" && !(stop > price && target < price))) throw new Error("Stop loss and take profit must be on the correct side of entry.");
+    const stopDistance = Math.abs(price - stop);
+    const riskAmount = this.balance * (risk / 100);
+    this.position = { direction, entry: price, stopLoss: stop, takeProfit: target, riskPercent: risk, riskAmount, positionSize: riskAmount / stopDistance, openedAt: this.currentCandle().timestamp };
+    return this.snapshot();
+  }
+
+  closePosition(reason = "Manual close") {
+    if (!this.position) throw new Error("There is no open position to close.");
+    return this.closeAt(this.currentCandle().close, reason, this.currentCandle());
+  }
+
+  currentCandle() {
+    return this.candles[this.index] || null;
+  }
+
+  visibleCandles() {
+    return this.candles.slice(0, this.index + 1);
+  }
+
+  snapshot() {
+    const candle = this.currentCandle();
+    const currentPrice = candle?.close ?? this.balance;
+    const unrealizedPnL = this.position ? this.position.direction === "Buy" ? (currentPrice - this.position.entry) * this.position.positionSize : (this.position.entry - currentPrice) * this.position.positionSize : 0;
+    const equity = this.balance + unrealizedPnL;
+    this.peak = Math.max(this.peak, equity);
+    this.maxDrawdown = Math.max(this.maxDrawdown, this.peak - equity);
+    return { status: this.status, index: this.index, totalCandles: this.candles.length, visibleCandles: this.visibleCandles(), currentCandle: candle, currentPrice, balance: this.balance, equity, unrealizedPnL, position: this.position, maxDrawdown: this.maxDrawdown, progress: this.candles.length ? ((this.index + 1) / this.candles.length) * 100 : 0 };
+  }
+
+  processPosition(candle) {
+    if (!this.position) return null;
+    const hitStop = this.position.direction === "Buy" ? candle.low <= this.position.stopLoss : candle.high >= this.position.stopLoss;
+    const hitTarget = this.position.direction === "Buy" ? candle.high >= this.position.takeProfit : candle.low <= this.position.takeProfit;
+    if (!hitStop && !hitTarget) return null;
+    const useStop = hitStop;
+    return this.closeAt(useStop ? this.position.stopLoss : this.position.takeProfit, useStop ? "Stop Loss" : "Take Profit", candle);
+  }
+
+  closeAt(exitPrice, reason, candle) {
+    const position = this.position;
+    const pnl = position.direction === "Buy" ? (exitPrice - position.entry) * position.positionSize : (position.entry - exitPrice) * position.positionSize;
+    const trade = { trade_date: candle.timestamp, instrument: this.config.instrument, direction: position.direction, entry: position.entry, exit_price: exitPrice, stop_loss: position.stopLoss, take_profit: position.takeProfit, position_size: position.positionSize, risk_percent: position.riskPercent, simulated_pnl: Number(pnl.toFixed(2)), r_multiple: position.riskAmount ? Number((pnl / position.riskAmount).toFixed(4)) : 0, outcome: pnl > 0 ? "Win" : pnl < 0 ? "Loss" : "Breakeven", strategy: this.config.strategyName, exit_reason: reason };
+    this.balance += trade.simulated_pnl;
+    this.position = null;
+    this.peak = Math.max(this.peak, this.balance);
+    this.maxDrawdown = Math.max(this.maxDrawdown, this.peak - this.balance);
+    return trade;
+  }
+}
