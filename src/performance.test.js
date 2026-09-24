@@ -4,6 +4,7 @@ import {
   calculatePerformanceMetrics,
   calculatePsychologyAnalysis,
   calculateAdvancedAnalytics,
+  calculateBacktestResults,
   calculateTradingStatistics,
   filterAndSortTrades,
   filterTradesByDateRange,
@@ -158,5 +159,17 @@ describe("advanced analytics", () => {
     expect(result.byTimeframe.map(({ label }) => label)).toEqual(["H1", "M15"]);
     expect(result.byDirection).toHaveLength(2);
     expect(result.byDay.map(({ label }) => label)).toEqual(["Monday", "Tuesday", "Wednesday"]);
+  });
+});
+
+describe("backtesting results", () => {
+  it("calculates results from backtest trades without changing the starting balance", () => {
+    const result = calculateBacktestResults([
+      { trade_date: "2026-01-01", outcome: "Win", simulated_pnl: 100, r_multiple: 2 },
+      { trade_date: "2026-01-02", outcome: "Loss", simulated_pnl: 40, r_multiple: -1 },
+    ], 10000);
+
+    expect(result).toMatchObject({ startingBalance: 10000, endingBalance: 10060, netPnL: 60, totalTrades: 2, wins: 1, losses: 1, maxDrawdown: 40 });
+    expect(result.equityCurve.map(({ balance }) => balance)).toEqual([10000, 10100, 10060]);
   });
 });

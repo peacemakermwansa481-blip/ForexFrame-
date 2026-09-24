@@ -8,6 +8,7 @@ import {
   calculateTradingStatistics,
   calculatePsychologyAnalysis,
   calculateAdvancedAnalytics,
+  calculateBacktestResults,
   EQUITY_PERIODS,
   filterAndSortTrades,
   filterTradesByPeriod,
@@ -764,6 +765,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const [showPsychologyPage, setShowPsychologyPage] = useState(false);
   const [showAnalyticsPage, setShowAnalyticsPage] = useState(false);
   const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
+  const [showBacktestPage, setShowBacktestPage] = useState(false);
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -845,6 +847,15 @@ const [loadingTrades, setLoadingTrades] = useState(true);
       month: "short",
       day: "numeric",
     });
+
+  if (showBacktestPage) {
+    return (
+      <div className="app">
+        <header className="topbar"><div><div className="logo">ForexFrame</div><div className="subtitle">Trading Journal</div></div><div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div></header>
+        <BacktestPage user={user} onBack={() => setShowBacktestPage(false)} />
+      </div>
+    );
+  }
 
   if (showAnalyticsHub) {
     return (
@@ -1143,6 +1154,11 @@ const [loadingTrades, setLoadingTrades] = useState(true);
             <span className="launcher-copy"><strong>Analytics</strong><span>Open statistics, performance, psychology, and trade analysis</span></span>
             <span className="launcher-arrow">→</span>
           </button>
+          <button className="card backtest-launcher" type="button" onClick={() => setShowBacktestPage(true)}>
+            <span className="launcher-icon"><Icon name="chart" size={28} /></span>
+            <span className="launcher-copy"><strong>Backtesting</strong><span>Test strategies with simulated trades, separate from your journal</span></span>
+            <span className="launcher-arrow">→</span>
+          </button>
         </section>
       </main>
 
@@ -1387,4 +1403,50 @@ function AnalyticsHub({ onBack, onStatistics, onAdvanced, onPsychology, onTrades
       <div className="analytics-hub-group"><p className="eyebrow">TRADE ANALYSIS</p><button className="card analytics-hub-tile" type="button" onClick={onTrades}><span className="launcher-icon"><Icon name="book" size={25} /></span><span className="launcher-copy"><strong>Detailed trade analysis</strong><span>{tiles[3].description}</span></span><span className="launcher-arrow">→</span></button></div>
     </section>
   </main>;
+}
+
+function BacktestSetup({ user, onCancel, onCreated }) {
+  const [form, setForm] = useState({ name: "", instrument: "", timeframe: "H1", startDate: "", endDate: "", startingBalance: "10000", strategyName: "", strategyDescription: "", direction: "Both", riskPerTrade: "1", maxPositions: "1", commission: "0" });
+  const [error, setError] = useState("");
+  const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+  async function submit(event) {
+    event.preventDefault();
+    if (!form.name.trim() || !form.instrument.trim() || !form.strategyName.trim()) return setError("Name, instrument, and strategy are required.");
+    if (!form.startDate || !form.endDate || form.endDate < form.startDate) return setError("Choose a valid date range.");
+    if (Number(form.startingBalance) <= 0 || Number(form.riskPerTrade) <= 0 || Number(form.riskPerTrade) > 100 || Number(form.maxPositions) < 1 || Number(form.commission) < 0) return setError("Check the numerical settings.");
+    const { data, error: insertError } = await supabase.from("backtests").insert({ user_id: user.id, name: form.name.trim(), instrument: form.instrument.trim(), timeframe: form.timeframe, start_date: form.startDate, end_date: form.endDate, strategy_name: form.strategyName.trim(), strategy_description: form.strategyDescription.trim() || null, direction: form.direction, starting_balance: Number(form.startingBalance), risk_per_trade: Number(form.riskPerTrade), max_simultaneous_positions: Number(form.maxPositions), commission_per_trade: Number(form.commission), status: "draft" }).select().single();
+    if (insertError) return setError(insertError.message);
+    onCreated(data);
+  }
+  return <main className="backtest-page"><div className="page-heading"><button className="back-button" type="button" onClick={onCancel}>← Back</button><div><p className="eyebrow">BACKTESTING</p><h1>New backtest</h1><p className="muted">Configure a simulated historical test. No journal trades are changed.</p></div></div><form className="card backtest-form" onSubmit={submit}><h2>Basic information</h2><div className="backtest-form-grid"><label>Backtest name<input value={form.name} onChange={(event) => update("name", event.target.value)} required placeholder="London breakout test" /></label><label>Instrument<input value={form.instrument} onChange={(event) => update("instrument", event.target.value)} required placeholder="EUR/USD" /></label><label>Timeframe<select value={form.timeframe} onChange={(event) => update("timeframe", event.target.value)}>{["M1", "M5", "M15", "M30", "H1", "H4", "D1"].map((value) => <option key={value}>{value}</option>)}</select></label><label>Start date<input type="date" value={form.startDate} onChange={(event) => update("startDate", event.target.value)} required /></label><label>End date<input type="date" value={form.endDate} onChange={(event) => update("endDate", event.target.value)} required /></label><label>Starting balance<input type="number" min="0.01" step="0.01" value={form.startingBalance} onChange={(event) => update("startingBalance", event.target.value)} required /></label></div><h2>Strategy information</h2><div className="backtest-form-grid"><label>Strategy name<input value={form.strategyName} onChange={(event) => update("strategyName", event.target.value)} required /></label><label>Trading direction<select value={form.direction} onChange={(event) => update("direction", event.target.value)}><option>Both</option><option>Buy</option><option>Sell</option></select></label><label className="full-width">Strategy description<textarea value={form.strategyDescription} onChange={(event) => update("strategyDescription", event.target.value)} rows="3" /></label></div><h2>Risk settings</h2><div className="backtest-form-grid"><label>Risk per trade (%)<input type="number" min="0.01" max="100" step="0.01" value={form.riskPerTrade} onChange={(event) => update("riskPerTrade", event.target.value)} required /></label><label>Max simultaneous positions<input type="number" min="1" step="1" value={form.maxPositions} onChange={(event) => update("maxPositions", event.target.value)} required /></label><label>Commission per trade<input type="number" min="0" step="0.01" value={form.commission} onChange={(event) => update("commission", event.target.value)} required /></label></div>{error && <p className="form-error">{error}</p>}<div className="backtest-form-actions"><button type="button" className="secondary-button" onClick={onCancel}>Cancel</button><button type="submit" className="primary-button">Create Backtest</button></div></form></main>;
+}
+
+function BacktestTradeForm({ backtest, user, onSaved }) {
+  const [form, setForm] = useState({ tradeDate: new Date().toISOString().slice(0, 16), direction: "Buy", entry: "", stopLoss: "", takeProfit: "", positionSize: "", riskPercent: backtest.risk_per_trade || "1", pnl: "", rMultiple: "", outcome: "Win", entryReason: "", exitReason: "", emotion: "", mistake: "", lesson: "" });
+  const [error, setError] = useState("");
+  const update = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+  async function submit(event) { event.preventDefault(); if (!form.entry || !form.pnl || !form.tradeDate) return setError("Trade date, entry, and simulated P/L are required."); const { error: insertError } = await supabase.from("backtest_trades").insert({ backtest_id: backtest.id, user_id: user.id, trade_date: new Date(form.tradeDate).toISOString(), instrument: backtest.instrument, direction: form.direction, entry: Number(form.entry), stop_loss: form.stopLoss ? Number(form.stopLoss) : null, take_profit: form.takeProfit ? Number(form.takeProfit) : null, position_size: form.positionSize ? Number(form.positionSize) : null, risk_percent: form.riskPercent ? Number(form.riskPercent) : null, simulated_pnl: Number(form.pnl), r_multiple: form.rMultiple ? Number(form.rMultiple) : null, outcome: form.outcome, strategy: backtest.strategy_name, entry_reason: form.entryReason || null, exit_reason: form.exitReason || null, emotion: form.emotion || null, mistake: form.mistake || null, lesson: form.lesson || null }); if (insertError) return setError(insertError.message); await supabase.from("backtests").update({ status: "in_progress" }).eq("id", backtest.id).eq("user_id", user.id); setForm((current) => ({ ...current, pnl: "", rMultiple: "", entryReason: "", exitReason: "", emotion: "", mistake: "", lesson: "" })); onSaved(); }
+  return <form className="card backtest-trade-form" onSubmit={submit}><div className="card-header"><div><h2>Record simulated trade</h2><p className="muted">These trades belong only to this backtest session.</p></div></div><div className="backtest-form-grid"><label>Date/time<input type="datetime-local" value={form.tradeDate} onChange={(event) => update("tradeDate", event.target.value)} required /></label><label>Direction<select value={form.direction} onChange={(event) => update("direction", event.target.value)}><option>Buy</option><option>Sell</option></select></label><label>Entry<input type="number" step="any" value={form.entry} onChange={(event) => update("entry", event.target.value)} required /></label><label>Stop loss<input type="number" step="any" value={form.stopLoss} onChange={(event) => update("stopLoss", event.target.value)} /></label><label>Take profit<input type="number" step="any" value={form.takeProfit} onChange={(event) => update("takeProfit", event.target.value)} /></label><label>Position size<input type="number" step="any" value={form.positionSize} onChange={(event) => update("positionSize", event.target.value)} /></label><label>Risk %<input type="number" step="any" value={form.riskPercent} onChange={(event) => update("riskPercent", event.target.value)} /></label><label>Simulated P/L<input type="number" step="0.01" value={form.pnl} onChange={(event) => update("pnl", event.target.value)} required /></label><label>R multiple<input type="number" step="any" value={form.rMultiple} onChange={(event) => update("rMultiple", event.target.value)} /></label><label>Outcome<select value={form.outcome} onChange={(event) => update("outcome", event.target.value)}><option>Win</option><option>Loss</option><option>Breakeven</option></select></label><label className="full-width">Entry reason<textarea rows="2" value={form.entryReason} onChange={(event) => update("entryReason", event.target.value)} /></label><label className="full-width">Exit reason<textarea rows="2" value={form.exitReason} onChange={(event) => update("exitReason", event.target.value)} /></label><label>Emotion<input value={form.emotion} onChange={(event) => update("emotion", event.target.value)} /></label><label>Mistake<input value={form.mistake} onChange={(event) => update("mistake", event.target.value)} /></label><label className="full-width">Lesson<textarea rows="2" value={form.lesson} onChange={(event) => update("lesson", event.target.value)} /></label></div>{error && <p className="form-error">{error}</p>}<button type="submit" className="primary-button">Save simulated trade</button></form>;
+}
+
+function BacktestSession({ backtest, trades, user, onBack, onRefresh }) {
+  const results = calculateBacktestResults(trades, backtest.starting_balance);
+  const formatMoney = (value) => Number(value).toFixed(2);
+  return <main className="backtest-page"><div className="page-heading"><button className="back-button" type="button" onClick={onBack}>← Back to backtests</button><div><p className="eyebrow">BACKTEST SESSION</p><h1>{backtest.name}</h1><p className="muted">{backtest.instrument} · {backtest.timeframe} · {backtest.start_date} to {backtest.end_date}</p></div><span className="badge">{backtest.status}</span></div><section className="stats-grid backtest-stats"><div className="card"><span>Starting balance</span><strong>{formatMoney(results.startingBalance)}</strong></div><div className="card"><span>Current balance</span><strong>{formatMoney(results.endingBalance)}</strong></div><div className="card"><span>Net P/L</span><strong className={results.netPnL >= 0 ? "positive-text" : "negative-text"}>{formatMoney(results.netPnL)}</strong></div><div className="card"><span>Trades</span><strong>{results.totalTrades}</strong></div><div className="card"><span>Win rate</span><strong>{results.winRate.toFixed(1)}%</strong></div><div className="card"><span>Current drawdown</span><strong className="negative-text">{formatMoney(results.maxDrawdown)}</strong></div></section><section className="card backtest-replay-placeholder"><p className="eyebrow">PHASE 2 REPLAY AREA</p><h2>Historical chart and replay engine</h2><p className="muted">This reserved area will connect to verified historical market data in the next phase. No fictional price data is shown here.</p></section><BacktestTradeForm backtest={backtest} user={user} onSaved={onRefresh} /><section className="card analytics-section"><div className="card-header"><div><h2>Recorded simulated trades</h2><p className="muted">Separate from your normal journal trades.</p></div><span className="badge">{trades.length}</span></div>{trades.length === 0 ? <p className="muted">No simulated trades recorded yet.</p> : <div className="analytics-table-wrap"><table className="analytics-table"><thead><tr><th>Date</th><th>Direction</th><th>Outcome</th><th>P&amp;L</th><th>R</th></tr></thead><tbody>{trades.map((trade) => <tr key={trade.id}><td>{new Date(trade.trade_date).toLocaleString()}</td><td>{trade.direction}</td><td>{trade.outcome}</td><td>{formatMoney(trade.simulated_pnl)}</td><td>{trade.r_multiple ?? "—"}</td></tr>)}</tbody></table></div>}</section></main>;
+}
+
+function BacktestPage({ user, onBack }) {
+  const [mode, setMode] = useState("landing");
+  const [backtests, setBacktests] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [trades, setTrades] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  async function loadBacktests() { setLoading(true); const { data, error: loadError } = await supabase.from("backtests").select("*").eq("user_id", user.id).order("created_at", { ascending: false }); if (loadError) setError(loadError.message); else setBacktests(data || []); setLoading(false); }
+  async function loadTrades(backtest) { const { data, error: loadError } = await supabase.from("backtest_trades").select("*").eq("backtest_id", backtest.id).eq("user_id", user.id).order("trade_date", { ascending: true }); if (loadError) setError(loadError.message); else setTrades(data || []); }
+  useEffect(() => { loadBacktests(); }, []);
+  async function openSession(backtest) { setSelected(backtest); await loadTrades(backtest); setMode("session"); }
+  if (mode === "setup") return <BacktestSetup user={user} onCancel={() => setMode("landing")} onCreated={(backtest) => { setBacktests((current) => [backtest, ...current]); setSelected(backtest); setTrades([]); setMode("session"); }} />;
+  if (mode === "session" && selected) return <BacktestSession backtest={selected} trades={trades} user={user} onBack={() => { setMode("landing"); setSelected(null); loadBacktests(); }} onRefresh={async () => { await loadTrades(selected); await loadBacktests(); }} />;
+  return <main className="backtest-page"><div className="page-heading"><button className="back-button" type="button" onClick={onBack}>← Dashboard</button><div><p className="eyebrow">SIMULATED HISTORICAL TESTING</p><h1>Backtesting</h1><p className="muted">Test recorded strategy ideas separately from your normal trading journal.</p></div><button className="primary-button" type="button" onClick={() => { setError(""); setMode("setup"); }}>+ New Backtest</button></div>{error && <div className="card form-error">{error}<p className="muted">Apply the included Supabase migration before saving backtests.</p></div>}<section className="card backtest-list"><div className="card-header"><div><h2>Previous backtests</h2><p className="muted">Saved sessions are visible only to the authenticated owner.</p></div></div>{loading ? <p className="muted">Loading backtests...</p> : backtests.length === 0 ? <div className="empty-state"><p>No backtests yet.</p><span>Create a session to begin recording simulated trades.</span></div> : <div className="backtest-cards">{backtests.map((backtest) => <button className="backtest-card" key={backtest.id} type="button" onClick={() => openSession(backtest)}><div><strong>{backtest.name}</strong><span>{backtest.instrument} · {backtest.timeframe} · {backtest.start_date} to {backtest.end_date}</span><span>{backtest.strategy_name} · Starting balance {Number(backtest.starting_balance).toFixed(2)}</span></div><span className="badge">{backtest.status}</span></button>)}</div>}</section></main>;
 }

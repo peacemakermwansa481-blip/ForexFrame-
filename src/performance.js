@@ -379,3 +379,34 @@ export function calculateAdvancedAnalytics(trades = []) {
   }).sort((a, b) => dayNames.indexOf(a.label) - dayNames.indexOf(b.label));
   return { byInstrument, byStrategy, byTimeframe, byDirection, byDay, summary: calculateTradingStatistics(trades) };
 }
+
+export function calculateBacktestResults(trades = [], startingBalance = 0) {
+  const statistics = calculateTradingStatistics(trades);
+  const ordered = sortTradesChronologically(trades);
+  let balance = numericValue(startingBalance);
+  let peak = balance;
+  let maxDrawdown = 0;
+  const equityCurve = [{ trade: null, balance }];
+  ordered.forEach((trade) => {
+    balance += normalizedProfitLoss(trade);
+    peak = Math.max(peak, balance);
+    maxDrawdown = Math.max(maxDrawdown, peak - balance);
+    equityCurve.push({ trade, balance });
+  });
+  return {
+    startingBalance: numericValue(startingBalance),
+    endingBalance: balance,
+    netPnL: statistics.totalPnL,
+    totalTrades: statistics.totalTrades,
+    wins: statistics.winningTrades,
+    losses: statistics.losingTrades,
+    breakevens: statistics.breakevenTrades,
+    winRate: statistics.winRate,
+    averageWin: statistics.averageWinningTrade,
+    averageLoss: statistics.averageLosingTrade,
+    averageR: statistics.averageRMultiple,
+    profitFactor: statistics.profitFactor,
+    maxDrawdown,
+    equityCurve,
+  };
+}
