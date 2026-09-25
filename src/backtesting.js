@@ -21,6 +21,7 @@ export class MockHistoricalDataProvider {
   constructor() { this.label = "DEMO DATA — NOT REAL MARKET DATA"; }
 
   async getHistoricalCandles({ instrument, timeframe, startDate, endDate }) {
+    console.info("[ForexFrame Replay] getHistoricalCandles() start", { instrument, timeframe, startDate, endDate });
     if (typeof instrument !== "string" || !instrument.trim()) throw new Error("A non-empty instrument is required for DEMO historical data.");
     if (!SUPPORTED_TIMEFRAMES.includes(timeframe)) throw new Error(`Unsupported timeframe: ${timeframe}.`);
     const start = new Date(`${startDate}T00:00:00Z`);
@@ -39,6 +40,7 @@ export class MockHistoricalDataProvider {
       price = close;
     }
     if (!candles.length) throw new Error("The DEMO provider returned no candle data for this range.");
+    console.info("[ForexFrame Replay] getHistoricalCandles() success", { instrument, timeframe, startDate, endDate, candles: candles.length });
     return candles;
   }
 }
@@ -117,13 +119,16 @@ export class ReplayController {
   }
 
   async load() {
+    console.info("[ForexFrame Replay] ReplayController.load() start", { config: this.config });
     this.candles = await this.provider.getHistoricalCandles({
       instrument: this.config.instrument,
       timeframe: this.config.timeframe,
       startDate: this.config.startDate,
       endDate: this.config.endDate,
     });
-    return this.snapshot();
+    const snapshot = this.snapshot();
+    console.info("[ForexFrame Replay] ReplayController.load() success", { candles: this.candles.length, snapshot });
+    return snapshot;
   }
 
   restore({ index = -1, balance, position, status = "idle" } = {}) {
@@ -133,7 +138,9 @@ export class ReplayController {
     this.status = status;
     this.peak = Math.max(numericValue(this.config.startingBalance), this.balance);
     this.maxDrawdown = Math.max(0, this.peak - this.balance);
-    return this.snapshot();
+    const snapshot = this.snapshot();
+    console.info("[ForexFrame Replay] restore() success", { requested: { index, balance, position, status }, snapshot });
+    return snapshot;
   }
 
   start() {
