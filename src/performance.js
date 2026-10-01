@@ -69,6 +69,11 @@ export function calculateJournalTradeSequence(trades = [], startingBalance = 0) 
   });
 }
 
+export function filterTradesByAccount(trades = [], accountId = null) {
+  if (!accountId) return [];
+  return trades.filter((trade) => trade.account_id === accountId);
+}
+
 export function sortTradesChronologically(trades = []) {
   return [...trades].sort((a, b) => {
     const dateDifference = new Date(a.trade_date) - new Date(b.trade_date);

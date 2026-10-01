@@ -44,6 +44,7 @@ const emptyTrade = {
   emotion: "",
   mistake: "",
   lesson: "",
+  account_id: null,
 };
 
 
@@ -150,7 +151,8 @@ function AuthScreen() {
   );
 }
 
-function AddTradeModal({ onClose, onSaved, initialTrade = null, trades = [], startingBalance = 10000 }) {
+function AddTradeModal({ onClose, onSaved, initialTrade = null, trades = [], account = null }) {
+  const startingBalance = Number(account?.starting_balance) || 0;
   const [trade, setTrade] = useState(initialTrade || emptyTrade);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -159,22 +161,23 @@ function AddTradeModal({ onClose, onSaved, initialTrade = null, trades = [], sta
   const metrics = calculateTradeMetrics(trade, balanceBefore);
   async function handleSave(event) {
     event.preventDefault(); setSaving(true); setError("");
+    if (!account?.id) { setError("Select a trading account before saving a trade."); setSaving(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError("Your session has expired. Please log in again."); setSaving(false); return; }
     const pnl = metrics.pnl;
     const numericFields = ["entry_price", "stop_price", "target_price", "position_size"];
-    const payload = { ...trade, user_id: user.id, trade_date: new Date(trade.trade_date).toISOString(), simulated_risk_percent: metrics.simulatedRiskPercent, simulated_pnl: pnl, r_multiple: metrics.rMultiple };
+    const payload = { ...trade, user_id: user.id, account_id: account?.id || null, trade_date: new Date(trade.trade_date).toISOString(), simulated_risk_percent: metrics.simulatedRiskPercent, simulated_pnl: pnl, r_multiple: metrics.rMultiple };
     numericFields.forEach((field) => { payload[field] = trade[field] === "" ? null : Number(trade[field]); });
     if (payload.outcome?.toLowerCase() === "loss" && payload.simulated_pnl !== null) payload.simulated_pnl = -Math.abs(payload.simulated_pnl);
     if (payload.outcome?.toLowerCase() === "win" && payload.simulated_pnl !== null) payload.simulated_pnl = Math.abs(payload.simulated_pnl);
     const { user_id, id, created_at, ...tradeData } = payload;
-    const result = id ? await supabase.from("trades").update(tradeData).eq("id", id).eq("user_id", user.id) : await supabase.from("trades").insert({ ...tradeData, user_id: user.id });
+    const result = id ? await supabase.from("trades").update(tradeData).eq("id", id).eq("user_id", user.id).eq("account_id", account?.id) : await supabase.from("trades").insert({ ...tradeData, user_id: user.id, account_id: account?.id });
     if (result.error) { setError(result.error.message); setSaving(false); return; }
     setSaving(false); await onSaved(); onClose();
   }
   const money = (value) => value === null || value === undefined ? "—" : Number(value).toFixed(2);
   const percent = (value) => value === null || value === undefined ? "—" : `${Number(value).toFixed(2)}%`;
-  return <div className="modal-backdrop"><div className="trade-modal"><div className="modal-header"><div><p className="eyebrow">JOURNAL ENTRY</p><h2>{initialTrade ? "Edit Simulated Trade" : "Add Simulated Trade"}</h2></div><button className="close-button" onClick={onClose}>Back</button></div><form onSubmit={handleSave} className="trade-form"><div className="form-grid"><label>Date &amp; Time<input type="datetime-local" value={trade.trade_date} onChange={(e) => updateField("trade_date", e.target.value)} required /></label><label>Instrument<input type="text" placeholder="e.g. XAU/USD" value={trade.instrument} onChange={(e) => updateField("instrument", e.target.value)} required /></label><label>Direction<select value={trade.direction} onChange={(e) => updateField("direction", e.target.value)}><option>Buy</option><option>Sell</option></select></label><label>Timeframe<select value={trade.timeframe} onChange={(e) => updateField("timeframe", e.target.value)}>{["M1", "M5", "M15", "M30", "H1", "H4", "D1"].map((value) => <option key={value}>{value}</option>)}</select></label><label>Entry Price<input type="number" step="any" value={trade.entry_price} onChange={(e) => updateField("entry_price", e.target.value)} /></label><label>Stop Price<input type="number" step="any" value={trade.stop_price} onChange={(e) => updateField("stop_price", e.target.value)} /></label><label>Target Price<input type="number" step="any" value={trade.target_price} onChange={(e) => updateField("target_price", e.target.value)} /></label><label>Position Size<input type="number" step="any" value={trade.position_size} onChange={(e) => updateField("position_size", e.target.value)} /></label><label>Simulated P/L<input type="number" step="0.01" value={trade.simulated_pnl ?? ""} onChange={(e) => updateField("simulated_pnl", e.target.value)} /></label><label>Outcome<select value={trade.outcome} onChange={(e) => updateField("outcome", e.target.value)}><option>Win</option><option>Loss</option><option>Breakeven</option></select></label><label className="full-span">Strategy / Setup<input type="text" placeholder="e.g. Market Structure" value={trade.strategy} onChange={(e) => updateField("strategy", e.target.value)} /></label><section className="trade-calculation-preview full-span"><p className="eyebrow">AUTOMATIC CALCULATIONS</p><div className="trade-calculation-grid"><div><span>Account Balance Before Trade</span><strong>{money(balanceBefore)}</strong></div><div><span>Monetary Risk</span><strong>{money(metrics.monetaryRisk)}</strong></div><div><span>Calculated Risk %</span><strong>{percent(metrics.simulatedRiskPercent)}</strong></div><div><span>Simulated P/L</span><strong>{money(metrics.pnl)}</strong></div><div><span>Calculated R-Multiple</span><strong>{metrics.rMultiple === null ? "—" : `${metrics.rMultiple >= 0 ? "+" : ""}${metrics.rMultiple.toFixed(2)}R`}</strong></div></div><small>Risk = abs(entry − stop) × abs(position size). Derived values are calculated when the required inputs are valid.</small></section><label className="full-span">Entry Reason<textarea placeholder="Why did you take this simulated trade?" value={trade.entry_reason} onChange={(e) => updateField("entry_reason", e.target.value)} /></label><label className="full-span">Exit Reason<textarea placeholder="Why did you exit?" value={trade.exit_reason} onChange={(e) => updateField("exit_reason", e.target.value)} /></label><label>Emotion<input type="text" placeholder="Calm, nervous, confident..." value={trade.emotion} onChange={(e) => updateField("emotion", e.target.value)} /></label><label>Mistake<input type="text" placeholder="Optional" value={trade.mistake} onChange={(e) => updateField("mistake", e.target.value)} /></label><label className="full-span">Lesson<textarea placeholder="What did you learn?" value={trade.lesson} onChange={(e) => updateField("lesson", e.target.value)} /></label></div>{error && <div className="error-message">{error}</div>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={saving}>{initialTrade ? "Update Simulated Trade" : "Save Simulated Trade"}</button></div></form></div></div>;
+  return <div className="modal-backdrop"><div className="trade-modal"><div className="modal-header"><div><p className="eyebrow">JOURNAL ENTRY</p><h2>{initialTrade ? "Edit Simulated Trade" : "Add Simulated Trade"}</h2></div><button className="close-button" onClick={onClose}>Back</button></div><form onSubmit={handleSave} className="trade-form"><div className="form-grid"><label>Date &amp; Time<input type="datetime-local" value={trade.trade_date} onChange={(e) => updateField("trade_date", e.target.value)} required /></label><label>Instrument<input type="text" placeholder="e.g. XAU/USD" value={trade.instrument} onChange={(e) => updateField("instrument", e.target.value)} required /></label><label>Direction<select value={trade.direction} onChange={(e) => updateField("direction", e.target.value)}><option>Buy</option><option>Sell</option></select></label><label>Timeframe<select value={trade.timeframe} onChange={(e) => updateField("timeframe", e.target.value)}>{["M1", "M5", "M15", "M30", "H1", "H4", "D1"].map((value) => <option key={value}>{value}</option>)}</select></label><label>Entry Price<input type="number" step="any" value={trade.entry_price} onChange={(e) => updateField("entry_price", e.target.value)} /></label><label>Stop Price<input type="number" step="any" value={trade.stop_price} onChange={(e) => updateField("stop_price", e.target.value)} /></label><label>Target Price<input type="number" step="any" value={trade.target_price} onChange={(e) => updateField("target_price", e.target.value)} /></label><label>Position Size<input type="number" step="any" value={trade.position_size} onChange={(e) => updateField("position_size", e.target.value)} /></label><label>Simulated P/L<input type="number" step="0.01" value={trade.simulated_pnl ?? ""} onChange={(e) => updateField("simulated_pnl", e.target.value)} /></label><label>Outcome<select value={trade.outcome} onChange={(e) => updateField("outcome", e.target.value)}><option>Win</option><option>Loss</option><option>Breakeven</option></select></label><div className="selected-account-callout full-span"><span>Account</span><strong>{account?.name || "Select an account first"}</strong><small>New trades are saved to the currently selected account.</small></div><label className="full-span">Strategy / Setup<input type="text" placeholder="e.g. Market Structure" value={trade.strategy} onChange={(e) => updateField("strategy", e.target.value)} /></label><section className="trade-calculation-preview full-span"><p className="eyebrow">AUTOMATIC CALCULATIONS</p><div className="trade-calculation-grid"><div><span>Account Balance Before Trade</span><strong>{money(balanceBefore)}</strong></div><div><span>Monetary Risk</span><strong>{money(metrics.monetaryRisk)}</strong></div><div><span>Calculated Risk %</span><strong>{percent(metrics.simulatedRiskPercent)}</strong></div><div><span>Simulated P/L</span><strong>{money(metrics.pnl)}</strong></div><div><span>Calculated R-Multiple</span><strong>{metrics.rMultiple === null ? "—" : `${metrics.rMultiple >= 0 ? "+" : ""}${metrics.rMultiple.toFixed(2)}R`}</strong></div></div><small>Risk = abs(entry − stop) × abs(position size). Derived values are calculated when the required inputs are valid.</small></section><label className="full-span">Entry Reason<textarea placeholder="Why did you take this simulated trade?" value={trade.entry_reason} onChange={(e) => updateField("entry_reason", e.target.value)} /></label><label className="full-span">Exit Reason<textarea placeholder="Why did you exit?" value={trade.exit_reason} onChange={(e) => updateField("exit_reason", e.target.value)} /></label><label>Emotion<input type="text" placeholder="Calm, nervous, confident..." value={trade.emotion} onChange={(e) => updateField("emotion", e.target.value)} /></label><label>Mistake<input type="text" placeholder="Optional" value={trade.mistake} onChange={(e) => updateField("mistake", e.target.value)} /></label><label className="full-span">Lesson<textarea placeholder="What did you learn?" value={trade.lesson} onChange={(e) => updateField("lesson", e.target.value)} /></label></div>{error && <div className="error-message">{error}</div>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={saving}>{initialTrade ? "Update Simulated Trade" : "Save Simulated Trade"}</button></div></form></div></div>;
 }
 function Icon({ name, size = 20 }) {
   const paths = {
@@ -452,35 +455,63 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const [showAnalyticsPage, setShowAnalyticsPage] = useState(false);
   const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
   const [showBacktestPage, setShowBacktestPage] = useState(false);
-  const [startingBalance, setStartingBalance] = useState(10000);
-  const [balanceDraft, setBalanceDraft] = useState("10000");
   const [balanceSaving, setBalanceSaving] = useState(false);
-  const [balanceError, setBalanceError] = useState("");
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+  const [accountSummaries, setAccountSummaries] = useState({});
+  const [accountForm, setAccountForm] = useState(null);
+  const [accountError, setAccountError] = useState("");
 
-  async function loadTrades() {
-    setLoadingTrades(true);
+  async function loadAccountSummaries() {
+    const { data, error } = await supabase.from("trades").select("account_id, simulated_pnl, outcome").eq("user_id", user.id);
+    if (error) return;
+    const summaries = {};
+    (data || []).forEach((trade) => {
+      if (!trade.account_id) return;
+      if (!summaries[trade.account_id]) summaries[trade.account_id] = { trades: 0, pnl: 0 };
+      summaries[trade.account_id].trades += 1;
+      summaries[trade.account_id].pnl += normalizedTradePnL(trade) ?? 0;
+    });
+    setAccountSummaries(summaries);
+  }
 
-    const { data, error } = await supabase
-      .from("trades")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("trade_date", { ascending: false });
-
-    if (!error) {
-      setTrades(data || []);
+  async function loadAccounts(preferredId = null) {
+    const { data, error } = await supabase.from("trading_accounts").select("*").eq("user_id", user.id).order("created_at", { ascending: true });
+    if (error) { setAccountError(error.message); return []; }
+    let nextAccounts = data || [];
+    if (nextAccounts.length === 0) {
+      const { data: created, error: createError } = await supabase.from("trading_accounts").insert({ user_id: user.id, name: "Main Account", starting_balance: 10000 }).select().single();
+      if (createError) { setAccountError(createError.message); return []; }
+      nextAccounts = [created];
     }
+    setAccounts(nextAccounts);
+    setSelectedAccountId((current) => preferredId && nextAccounts.some((account) => account.id === preferredId) ? preferredId : current && nextAccounts.some((account) => account.id === current) ? current : nextAccounts[0].id);
+    setAccountError("");
+    return nextAccounts;
+  }
 
+  async function loadTrades(accountId = selectedAccountId) {
+    setLoadingTrades(true);
+    if (!accountId) { setTrades([]); setLoadingTrades(false); return []; }
+    const { data, error } = await supabase.from("trades").select("*").eq("user_id", user.id).eq("account_id", accountId).order("trade_date", { ascending: false });
+    if (!error) setTrades(data || []);
+    else setAccountError(error.message);
     setLoadingTrades(false);
     return data || [];
   }
 
   useEffect(() => {
-    loadTrades();
-    (async () => {
-      const { data } = await supabase.from("user_account_settings").select("starting_balance").eq("user_id", user.id).maybeSingle();
-      if (data?.starting_balance) { setStartingBalance(Number(data.starting_balance)); setBalanceDraft(String(data.starting_balance)); }
-    })();
+    loadAccounts();
+    loadAccountSummaries();
   }, []);
+
+  useEffect(() => {
+    const active = accounts.find((account) => account.id === selectedAccountId);
+    if (active) {
+      setSelectedTrade(null);
+      loadTrades(active.id);
+    }
+  }, [selectedAccountId, accounts]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -503,17 +534,47 @@ const [loadingTrades, setLoadingTrades] = useState(true);
 
     setTrades((currentTrades) => currentTrades.filter((item) => item.id !== trade.id));
     setSelectedTrade(null);
+    await loadAccountSummaries();
   }
 
-  async function saveStartingBalance(event) {
-    event.preventDefault();
-    const value = Number(balanceDraft);
-    if (!Number.isFinite(value) || value <= 0) return setBalanceError("Starting balance must be a positive number.");
-    setBalanceSaving(true); setBalanceError("");
-    const { error } = await supabase.from("user_account_settings").upsert({ user_id: user.id, starting_balance: value }, { onConflict: "user_id" });
-    if (error) setBalanceError(error.message); else setStartingBalance(value);
-    setBalanceSaving(false);
+  const selectedAccount = accounts.find((account) => account.id === selectedAccountId) || null;
+  const startingBalance = Number(selectedAccount?.starting_balance) || 0;
+
+  function openAccountEditor(account = null) {
+    setAccountError("");
+    setAccountForm(account ? { id: account.id, name: account.name, starting_balance: String(account.starting_balance) } : { name: "", starting_balance: "10000" });
   }
+
+  async function saveAccount(event) {
+    event.preventDefault();
+    const name = String(accountForm?.name || "").trim();
+    const balance = Number(accountForm?.starting_balance);
+    if (!name) return setAccountError("Account name is required.");
+    if (!Number.isFinite(balance) || balance <= 0) return setAccountError("Starting balance must be greater than zero.");
+    setBalanceSaving(true); setAccountError("");
+    const result = accountForm.id
+      ? await supabase.from("trading_accounts").update({ name, starting_balance: balance }).eq("id", accountForm.id).eq("user_id", user.id).select().single()
+      : await supabase.from("trading_accounts").insert({ user_id: user.id, name, starting_balance: balance }).select().single();
+    if (result.error) { setAccountError(result.error.message); setBalanceSaving(false); return; }
+    setAccountForm(null); setBalanceSaving(false);
+    await loadAccounts(result.data.id);
+    await loadAccountSummaries();
+  }
+
+  async function deleteAccount(account) {
+    const summary = accountSummaries[account.id] || { trades: 0 };
+    if (summary.trades > 0) {
+      window.alert(`${account.name} contains ${summary.trades} historical trade${summary.trades === 1 ? "" : "s"}. It cannot be deleted so your trading history remains safe.`);
+      return;
+    }
+    if (!window.confirm(`Delete the empty account “${account.name}”? This cannot be undone.`)) return;
+    const { error } = await supabase.from("trading_accounts").delete().eq("id", account.id).eq("user_id", user.id);
+    if (error) return setAccountError(error.message);
+    const remaining = await loadAccounts(selectedAccountId === account.id ? null : selectedAccountId);
+    if (selectedAccountId === account.id && remaining[0]) setSelectedAccountId(remaining[0].id);
+    await loadAccountSummaries();
+  }
+
   const totalTrades = trades.length;
 
   const wins = trades.filter(
@@ -665,7 +726,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
             }}
             initialTrade={selectedTrade}
             trades={trades}
-            startingBalance={startingBalance}
+            account={selectedAccount}
           />
         )}
       </div>
@@ -708,7 +769,9 @@ const [loadingTrades, setLoadingTrades] = useState(true);
           </button>
         </section>
 
-        <section className="card account-balance-card"><div><p className="eyebrow">ACCOUNT BALANCE</p><h2>Simulated account</h2><div className="account-balance-metrics"><div><span>Starting Balance</span><strong>{formatMoney(startingBalance)}</strong></div><div><span>Current Balance</span><strong>{formatMoney(startingBalance + simulatedPL)}</strong></div><div><span>Total P/L</span><strong className={simulatedPL >= 0 ? "positive-text" : "negative-text"}>{simulatedPL >= 0 ? "+" : ""}{formatMoney(simulatedPL)}</strong></div><div><span>Total P/L %</span><strong>{startingBalance > 0 ? `${((simulatedPL / startingBalance) * 100).toFixed(2)}%` : "—"}</strong></div><div><span>Trades</span><strong>{totalTrades}</strong></div></div></div><form className="balance-settings-form" onSubmit={saveStartingBalance}><label>Starting balance<input type="number" min="0.01" step="0.01" value={balanceDraft} onChange={(event) => setBalanceDraft(event.target.value)} /></label><button className="secondary-button" type="submit" disabled={balanceSaving}>{balanceSaving ? "Saving..." : "Save balance"}</button>{balanceError && <p className="form-error">{balanceError}</p>}</form></section>
+        <section className="card account-balance-card"><div className="account-balance-main"><p className="eyebrow">ACTIVE TRADING ACCOUNT</p><div className="account-selector-row"><h2>{selectedAccount?.name || "No account selected"}</h2><select aria-label="Select trading account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></div><div className="account-balance-metrics"><div><span>Starting Balance</span><strong>{formatMoney(startingBalance)}</strong></div><div><span>Current Balance</span><strong>{formatMoney(startingBalance + simulatedPL)}</strong></div><div><span>Total P/L</span><strong className={simulatedPL >= 0 ? "positive-text" : "negative-text"}>{simulatedPL >= 0 ? "+" : ""}{formatMoney(simulatedPL)}</strong></div><div><span>Total P/L %</span><strong>{startingBalance > 0 ? `${((simulatedPL / startingBalance) * 100).toFixed(2)}%` : "—"}</strong></div><div><span>Trades</span><strong>{totalTrades}</strong></div></div></div><div className="account-actions"><button className="secondary-button" type="button" onClick={() => openAccountEditor(selectedAccount)} disabled={!selectedAccount}>Edit Account</button><button className="secondary-button" type="button" onClick={() => openAccountEditor()}>+ Add Account</button>{accountError && <p className="form-error">{accountError}</p>}</div></section>
+        <section className="card account-management-card"><div className="card-header"><div><p className="eyebrow">ACCOUNT MANAGEMENT</p><h2>My Trading Accounts</h2></div><button className="secondary-button" type="button" onClick={() => openAccountEditor()}>+ Add Account</button></div><div className="account-list">{accounts.map((account) => { const summary = accountSummaries[account.id] || { trades: 0, pnl: 0 }; return <div className={`account-list-row ${account.id === selectedAccountId ? "active" : ""}`} key={account.id}><button type="button" className="account-list-select" onClick={() => setSelectedAccountId(account.id)}><strong>{account.name}</strong><span>Balance: {formatMoney(Number(account.starting_balance) + summary.pnl)} · {summary.trades} trade{summary.trades === 1 ? "" : "s"}</span></button><button className="icon-text-button" type="button" onClick={() => openAccountEditor(account)}>Edit</button><button className="icon-text-button danger" type="button" onClick={() => deleteAccount(account)}>Delete</button></div>; })}</div></section>
+        {accountForm && <div className="card account-form-card"><div className="card-header"><div><p className="eyebrow">ACCOUNT SETTINGS</p><h2>{accountForm.id ? "Edit Account" : "Add Account"}</h2></div><button className="close-button" type="button" onClick={() => setAccountForm(null)}>Close</button></div><form className="account-form" onSubmit={saveAccount}><label>Account name<input type="text" value={accountForm.name} onChange={(event) => setAccountForm((current) => ({ ...current, name: event.target.value }))} placeholder="FundedNext Account" required /></label><label>Starting balance<input type="number" min="0.01" step="0.01" value={accountForm.starting_balance} onChange={(event) => setAccountForm((current) => ({ ...current, starting_balance: event.target.value }))} required /></label>{accountError && <p className="form-error">{accountError}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setAccountForm(null)}>Cancel</button><button className="primary-button" type="submit" disabled={balanceSaving}>{balanceSaving ? "Saving..." : "Save Account"}</button></div></form></div>}
         <section className="stats-grid">
           <div className="card">
             <span>Total Trades</span>
@@ -882,7 +945,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   onSaved={loadTrades}
   initialTrade={selectedTrade}
   trades={trades}
-  startingBalance={startingBalance}
+  account={selectedAccount}
 />
 )}
     </div>

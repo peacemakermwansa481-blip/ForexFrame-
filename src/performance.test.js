@@ -15,6 +15,7 @@ import {
   calculateTradeMetrics,
   calculateBalanceBeforeTrade,
   calculateJournalTradeSequence,
+  filterTradesByAccount,
 } from "./performance";
 import { MockHistoricalDataProvider, ReplayController, normalizeCandle, runBacktest } from "./backtesting";
 
@@ -49,6 +50,28 @@ describe("journal account balance calculations", () => {
 
   it("builds an account-balance equity curve without changing P/L", () => {
     expect(buildEquityCurve([{ trade_date: "2026-01-01", simulated_pnl: 200, outcome: "Win" }, { trade_date: "2026-01-02", simulated_pnl: 102, outcome: "Loss" }], 10000).map(({ balance }) => balance)).toEqual([10000, 10200, 10098]);
+  });
+});
+
+describe("multi-account journal isolation", () => {
+  const trades = [
+    { id: "a1", account_id: "account-a", trade_date: "2026-01-01", simulated_pnl: 500, outcome: "Win" },
+    { id: "b1", account_id: "account-b", trade_date: "2026-01-02", simulated_pnl: 100, outcome: "Loss" },
+  ];
+
+  it("filters trades to the selected account only", () => {
+    expect(filterTradesByAccount(trades, "account-a").map(({ id }) => id)).toEqual(["a1"]);
+    expect(filterTradesByAccount(trades, "account-b").map(({ id }) => id)).toEqual(["b1"]);
+    expect(filterTradesByAccount(trades, "missing")).toEqual([]);
+  });
+
+  it("calculates independent account balances and curves", () => {
+    const accountA = filterTradesByAccount(trades, "account-a");
+    const accountB = filterTradesByAccount(trades, "account-b");
+    expect(calculateJournalTradeSequence(accountA, 10000).at(-1).balanceAfter).toBe(10500);
+    expect(calculateJournalTradeSequence(accountB, 2000).at(-1).balanceAfter).toBe(1900);
+    expect(buildEquityCurve(accountA, 10000).map(({ balance }) => balance)).toEqual([10000, 10500]);
+    expect(buildEquityCurve(accountB, 2000).map(({ balance }) => balance)).toEqual([2000, 1900]);
   });
 });
 
