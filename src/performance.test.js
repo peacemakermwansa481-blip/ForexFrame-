@@ -11,8 +11,46 @@ import {
   filterTradesByPeriod,
   getStatisticsDateRange,
   getChartGeometry,
+  calculateMonetaryRisk,
+  calculateTradeMetrics,
+  calculateBalanceBeforeTrade,
+  calculateJournalTradeSequence,
 } from "./performance";
 import { MockHistoricalDataProvider, ReplayController, normalizeCandle, runBacktest } from "./backtesting";
+
+describe("journal account balance calculations", () => {
+  const trade = { entry_price: 100, stop_price: 98, position_size: 50, simulated_pnl: 200, outcome: "Win", trade_date: "2026-01-02T00:00:00Z" };
+
+  it("calculates monetary risk consistently for Buy and Sell trades", () => {
+    expect(calculateMonetaryRisk(trade)).toBe(100);
+    expect(calculateMonetaryRisk({ ...trade, direction: "Sell", entry_price: 98, stop_price: 100 })).toBe(100);
+  });
+
+  it("calculates risk percentage and R multiple from the pre-trade balance", () => {
+    expect(calculateTradeMetrics(trade, 10000)).toMatchObject({ monetaryRisk: 100, simulatedRiskPercent: 1, rMultiple: 2, balanceBefore: 10000 });
+  });
+
+  it("calculates chronological pre-trade balances", () => {
+    const trades = [
+      { id: "one", trade_date: "2026-01-01T00:00:00Z", simulated_pnl: 200, outcome: "Win" },
+      { id: "two", trade_date: "2026-01-03T00:00:00Z", simulated_pnl: 102, outcome: "Loss" },
+    ];
+    expect(calculateBalanceBeforeTrade(trades, { trade_date: "2026-01-02T00:00:00Z" }, 10000)).toBe(10200);
+    expect(calculateJournalTradeSequence(trades, 10000).map(({ balanceBefore, balanceAfter }) => [balanceBefore, balanceAfter])).toEqual([[10000, 10200], [10200, 10098]]);
+  });
+
+  it("returns safe unavailable values for invalid risk inputs", () => {
+    for (const invalid of [{}, { entry_price: 100, stop_price: 100, position_size: 1 }, { entry_price: 100, stop_price: 98, position_size: 0 }]) {
+      expect(calculateMonetaryRisk(invalid)).toBeNull();
+      expect(calculateTradeMetrics(invalid, 10000).simulatedRiskPercent).toBeNull();
+    }
+    expect(calculateTradeMetrics(trade, 0).simulatedRiskPercent).toBeNull();
+  });
+
+  it("builds an account-balance equity curve without changing P/L", () => {
+    expect(buildEquityCurve([{ trade_date: "2026-01-01", simulated_pnl: 200, outcome: "Win" }, { trade_date: "2026-01-02", simulated_pnl: 102, outcome: "Loss" }], 10000).map(({ balance }) => balance)).toEqual([10000, 10200, 10098]);
+  });
+});
 
 describe("equity curve", () => {
   const trades = [

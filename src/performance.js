@@ -3,6 +3,72 @@ export function numericValue(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
+export function validPositiveNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+export function normalizedTradePnL(trade = {}) {
+  const amount = Number(trade.simulated_pnl);
+  if (!Number.isFinite(amount)) return null;
+  const outcome = String(trade.outcome || "").toLowerCase();
+  if (outcome === "loss") return -Math.abs(amount);
+  if (outcome === "win") return Math.abs(amount);
+  return amount;
+}
+
+export function calculateMonetaryRisk(trade = {}) {
+  const entry = Number(trade.entry_price ?? trade.entry);
+  const stop = Number(trade.stop_price ?? trade.stopLoss ?? trade.stop_loss);
+  const size = Number(trade.position_size ?? trade.positionSize);
+  if (![entry, stop, size].every(Number.isFinite) || size === 0 || entry === stop) return null;
+  const risk = Math.abs(entry - stop) * Math.abs(size);
+  return Number.isFinite(risk) && risk > 0 ? risk : null;
+}
+
+export function calculateTradeMetrics(trade = {}, balanceBefore = null) {
+  const monetaryRisk = calculateMonetaryRisk(trade);
+  const balance = validPositiveNumber(balanceBefore);
+  const pnl = normalizedTradePnL(trade);
+  const riskPercent = monetaryRisk !== null && balance !== null ? (monetaryRisk / balance) * 100 : null;
+  const rMultiple = monetaryRisk !== null && pnl !== null ? pnl / monetaryRisk : null;
+  return {
+    balanceBefore: balance,
+    monetaryRisk,
+    simulatedRiskPercent: Number.isFinite(riskPercent) ? riskPercent : null,
+    rMultiple: Number.isFinite(rMultiple) ? rMultiple : null,
+    pnl,
+  };
+}
+
+export function calculateBalanceBeforeTrade(trades = [], trade = {}, startingBalance = 0) {
+  const initial = Number(startingBalance);
+  if (!Number.isFinite(initial) || initial <= 0) return null;
+  const targetDate = new Date(trade.trade_date).getTime();
+  if (!Number.isFinite(targetDate)) return null;
+  const candidates = trades.filter((item) => item.id !== trade.id);
+  const sequence = sortTradesChronologically([...candidates, trade]);
+  const targetIndex = sequence.indexOf(trade);
+  return sequence.slice(0, targetIndex < 0 ? sequence.length : targetIndex)
+    .reduce((balance, item) => {
+      const pnl = normalizedTradePnL(item);
+      return pnl === null ? balance : balance + pnl;
+    }, initial);
+}
+
+export function calculateJournalTradeSequence(trades = [], startingBalance = 0) {
+  const initial = Number(startingBalance);
+  if (!Number.isFinite(initial) || initial <= 0) return [];
+  let balance = initial;
+  return sortTradesChronologically(trades).map((trade) => {
+    const balanceBefore = balance;
+    const metrics = calculateTradeMetrics(trade, balanceBefore);
+    const pnl = metrics.pnl ?? 0;
+    balance += pnl;
+    return { trade, ...metrics, balanceAfter: balance };
+  });
+}
+
 export function sortTradesChronologically(trades = []) {
   return [...trades].sort((a, b) => {
     const dateDifference = new Date(a.trade_date) - new Date(b.trade_date);
@@ -40,22 +106,21 @@ export function filterTradesByPeriod(trades = [], periodDays = 30) {
 }
 
 /**
- * Returns the account equity after every trade, including the zero starting
- * point. The chart can therefore show both the starting balance and the
- * cumulative result instead of plotting isolated trade P/L values.
+ * Returns the account equity after every trade, including the starting
+ * balance. The chart therefore shows the account balance and cumulative
+ * result instead of plotting isolated trade P/L values.
  */
-export function buildEquityCurve(trades = []) {
-  let equity = 0;
-  const points = [{ trade: null, equity: 0 }];
-
+export function buildEquityCurve(trades = [], startingBalance = 0) {
+  const initial = Number(startingBalance);
+  let balance = Number.isFinite(initial) && initial > 0 ? initial : 0;
+  const points = [{ trade: null, equity: balance, balance }];
   sortTradesChronologically(trades).forEach((trade) => {
-    equity += numericValue(trade.simulated_pnl);
-    points.push({ trade, equity });
+    const pnl = normalizedTradePnL(trade);
+    balance += pnl ?? 0;
+    points.push({ trade, equity: balance, balance });
   });
-
   return points;
 }
-
 export function calculatePerformanceMetrics(trades = []) {
   const profits = trades.map((trade) => numericValue(trade.simulated_pnl));
 

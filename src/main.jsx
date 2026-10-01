@@ -17,6 +17,11 @@ import {
   getChartGeometry,
   numericValue,
   sortTradesChronologically,
+  calculateMonetaryRisk,
+  calculateTradeMetrics,
+  calculateBalanceBeforeTrade,
+  calculateJournalTradeSequence,
+  normalizedTradePnL,
 } from "./performance";
 import { MockHistoricalDataProvider, ReplayController, TestMomentumStrategy, runBacktest } from "./backtesting";
 
@@ -145,352 +150,32 @@ function AuthScreen() {
   );
 }
 
-function AddTradeModal({ onClose, onSaved, initialTrade = null }) {
+function AddTradeModal({ onClose, onSaved, initialTrade = null, trades = [], startingBalance = 10000 }) {
   const [trade, setTrade] = useState(initialTrade || emptyTrade);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-
-  function updateField(field, value) {
-    setTrade((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
-
+  function updateField(field, value) { setTrade((current) => ({ ...current, [field]: value })); }
+  const balanceBefore = calculateBalanceBeforeTrade(trades, trade, startingBalance);
+  const metrics = calculateTradeMetrics(trade, balanceBefore);
   async function handleSave(event) {
-    event.preventDefault();
-    setSaving(true);
-    setError("");
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("Your session has expired. Please log in again.");
-      setSaving(false);
-      return;
-    }
-
-    const numericFields = [
-      "entry_price",
-      "stop_price",
-      "target_price",
-      "position_size",
-      "simulated_risk_percent",
-      "simulated_pnl",
-      "r_multiple",
-    ];
-
-    const payload = {
-      ...trade,
-      user_id: user.id,
-      trade_date: new Date(trade.trade_date).toISOString(),
-    };
-
-     numericFields.forEach((field) => {
-  payload[field] =
-    trade[field] === "" ? null : Number(trade[field]);
-});
-
-if (payload.outcome?.toLowerCase() === "loss") {
-  payload.simulated_pnl = -Math.abs(payload.simulated_pnl || 0);
-}
-
-if (payload.outcome?.toLowerCase() === "win") {
-  payload.simulated_pnl = Math.abs(payload.simulated_pnl || 0);
-}
-
+    event.preventDefault(); setSaving(true); setError("");
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError("Your session has expired. Please log in again."); setSaving(false); return; }
+    const pnl = metrics.pnl;
+    const numericFields = ["entry_price", "stop_price", "target_price", "position_size"];
+    const payload = { ...trade, user_id: user.id, trade_date: new Date(trade.trade_date).toISOString(), simulated_risk_percent: metrics.simulatedRiskPercent, simulated_pnl: pnl, r_multiple: metrics.rMultiple };
+    numericFields.forEach((field) => { payload[field] = trade[field] === "" ? null : Number(trade[field]); });
+    if (payload.outcome?.toLowerCase() === "loss" && payload.simulated_pnl !== null) payload.simulated_pnl = -Math.abs(payload.simulated_pnl);
+    if (payload.outcome?.toLowerCase() === "win" && payload.simulated_pnl !== null) payload.simulated_pnl = Math.abs(payload.simulated_pnl);
     const { user_id, id, created_at, ...tradeData } = payload;
-
-const result = id
-  ? await supabase
-      .from("trades")
-      .update(tradeData)
-      .eq("id", id)
-      .eq("user_id", user.id)
-  : await supabase
-      .from("trades")
-      .insert({
-        ...tradeData,
-        user_id: user.id,
-      });
-
-if (result.error) {
-  setError(result.error.message);
-  setSaving(false);
-  return;
+    const result = id ? await supabase.from("trades").update(tradeData).eq("id", id).eq("user_id", user.id) : await supabase.from("trades").insert({ ...tradeData, user_id: user.id });
+    if (result.error) { setError(result.error.message); setSaving(false); return; }
+    setSaving(false); await onSaved(); onClose();
+  }
+  const money = (value) => value === null || value === undefined ? "—" : Number(value).toFixed(2);
+  const percent = (value) => value === null || value === undefined ? "—" : `${Number(value).toFixed(2)}%`;
+  return <div className="modal-backdrop"><div className="trade-modal"><div className="modal-header"><div><p className="eyebrow">JOURNAL ENTRY</p><h2>{initialTrade ? "Edit Simulated Trade" : "Add Simulated Trade"}</h2></div><button className="close-button" onClick={onClose}>Back</button></div><form onSubmit={handleSave} className="trade-form"><div className="form-grid"><label>Date &amp; Time<input type="datetime-local" value={trade.trade_date} onChange={(e) => updateField("trade_date", e.target.value)} required /></label><label>Instrument<input type="text" placeholder="e.g. XAU/USD" value={trade.instrument} onChange={(e) => updateField("instrument", e.target.value)} required /></label><label>Direction<select value={trade.direction} onChange={(e) => updateField("direction", e.target.value)}><option>Buy</option><option>Sell</option></select></label><label>Timeframe<select value={trade.timeframe} onChange={(e) => updateField("timeframe", e.target.value)}>{["M1", "M5", "M15", "M30", "H1", "H4", "D1"].map((value) => <option key={value}>{value}</option>)}</select></label><label>Entry Price<input type="number" step="any" value={trade.entry_price} onChange={(e) => updateField("entry_price", e.target.value)} /></label><label>Stop Price<input type="number" step="any" value={trade.stop_price} onChange={(e) => updateField("stop_price", e.target.value)} /></label><label>Target Price<input type="number" step="any" value={trade.target_price} onChange={(e) => updateField("target_price", e.target.value)} /></label><label>Position Size<input type="number" step="any" value={trade.position_size} onChange={(e) => updateField("position_size", e.target.value)} /></label><label>Simulated P/L<input type="number" step="0.01" value={trade.simulated_pnl ?? ""} onChange={(e) => updateField("simulated_pnl", e.target.value)} /></label><label>Outcome<select value={trade.outcome} onChange={(e) => updateField("outcome", e.target.value)}><option>Win</option><option>Loss</option><option>Breakeven</option></select></label><label className="full-span">Strategy / Setup<input type="text" placeholder="e.g. Market Structure" value={trade.strategy} onChange={(e) => updateField("strategy", e.target.value)} /></label><section className="trade-calculation-preview full-span"><p className="eyebrow">AUTOMATIC CALCULATIONS</p><div className="trade-calculation-grid"><div><span>Account Balance Before Trade</span><strong>{money(balanceBefore)}</strong></div><div><span>Monetary Risk</span><strong>{money(metrics.monetaryRisk)}</strong></div><div><span>Calculated Risk %</span><strong>{percent(metrics.simulatedRiskPercent)}</strong></div><div><span>Simulated P/L</span><strong>{money(metrics.pnl)}</strong></div><div><span>Calculated R-Multiple</span><strong>{metrics.rMultiple === null ? "—" : `${metrics.rMultiple >= 0 ? "+" : ""}${metrics.rMultiple.toFixed(2)}R`}</strong></div></div><small>Risk = abs(entry − stop) × abs(position size). Derived values are calculated when the required inputs are valid.</small></section><label className="full-span">Entry Reason<textarea placeholder="Why did you take this simulated trade?" value={trade.entry_reason} onChange={(e) => updateField("entry_reason", e.target.value)} /></label><label className="full-span">Exit Reason<textarea placeholder="Why did you exit?" value={trade.exit_reason} onChange={(e) => updateField("exit_reason", e.target.value)} /></label><label>Emotion<input type="text" placeholder="Calm, nervous, confident..." value={trade.emotion} onChange={(e) => updateField("emotion", e.target.value)} /></label><label>Mistake<input type="text" placeholder="Optional" value={trade.mistake} onChange={(e) => updateField("mistake", e.target.value)} /></label><label className="full-span">Lesson<textarea placeholder="What did you learn?" value={trade.lesson} onChange={(e) => updateField("lesson", e.target.value)} /></label></div>{error && <div className="error-message">{error}</div>}<div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button type="submit" className="primary-button" disabled={saving}>{initialTrade ? "Update Simulated Trade" : "Save Simulated Trade"}</button></div></form></div></div>;
 }
-
-setSaving(false);
-  await onSaved();
-  onClose();
-    }
-  return (
-    <div className="modal-backdrop">
-      <div className="trade-modal">
-        <div className="modal-header">
-          <div>
-            <p className="eyebrow">JOURNAL ENTRY</p>
-            <h2>{initialTrade ? "Edit Simulated Trade" : "Add Simulated Trade"}</h2>
-          </div>
-
-          <button className="close-button" onClick={onClose}>
-            Back
-          </button>
-        </div>
-
-        <form onSubmit={handleSave} className="trade-form">
-          <div className="form-grid">
-            <label>
-              Date & Time
-              <input
-                type="datetime-local"
-                value={trade.trade_date}
-                onChange={(e) =>
-                  updateField("trade_date", e.target.value)
-                }
-                required
-              />
-            </label>
-
-            <label>
-              Instrument
-              <input
-                type="text"
-                placeholder="e.g. XAU/USD"
-                value={trade.instrument}
-                onChange={(e) =>
-                  updateField("instrument", e.target.value)
-                }
-                required
-              />
-            </label>
-
-            <label>
-              Direction
-              <select
-                value={trade.direction}
-                onChange={(e) =>
-                  updateField("direction", e.target.value)
-                }
-              >
-                <option>Buy</option>
-                <option>Sell</option>
-              </select>
-            </label>
-
-            <label>
-              Timeframe
-              <select
-                value={trade.timeframe}
-                onChange={(e) =>
-                  updateField("timeframe", e.target.value)
-                }
-              >
-                <option>M1</option>
-                <option>M5</option>
-                <option>M15</option>
-                <option>M30</option>
-                <option>H1</option>
-                <option>H4</option>
-                <option>D1</option>
-              </select>
-            </label>
-
-            <label>
-              Entry Price
-              <input
-                type="number"
-                step="any"
-                value={trade.entry_price}
-                onChange={(e) =>
-                  updateField("entry_price", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Stop Price
-              <input
-                type="number"
-                step="any"
-                value={trade.stop_price}
-                onChange={(e) =>
-                  updateField("stop_price", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Target Price
-              <input
-                type="number"
-                step="any"
-                value={trade.target_price}
-                onChange={(e) =>
-                  updateField("target_price", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Position Size
-              <input
-                type="number"
-                step="any"
-                value={trade.position_size}
-                onChange={(e) =>
-                  updateField("position_size", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Simulated Risk %
-              <input
-                type="number"
-                step="any"
-                value={trade.simulated_risk_percent}
-                onChange={(e) =>
-                  updateField("simulated_risk_percent", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Simulated P/L
-              <input
-                type="number"
-                step="any"
-                value={trade.simulated_pnl}
-                onChange={(e) =>
-                  updateField("simulated_pnl", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              R-Multiple
-              <input
-                type="number"
-                step="any"
-                value={trade.r_multiple}
-                onChange={(e) =>
-                  updateField("r_multiple", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Outcome
-              <select
-                value={trade.outcome}
-                onChange={(e) =>
-                  updateField("outcome", e.target.value)
-                }
-              >
-                <option>Win</option>
-                <option>Loss</option>
-                <option>Breakeven</option>
-              </select>
-            </label>
-
-            <label className="full-span">
-              Strategy / Setup
-              <input
-                type="text"
-                placeholder="e.g. Market Structure"
-                value={trade.strategy}
-                onChange={(e) =>
-                  updateField("strategy", e.target.value)
-                }
-              />
-            </label>
-
-            <label className="full-span">
-              Entry Reason
-              <textarea
-                placeholder="Why did you take this simulated trade?"
-                value={trade.entry_reason}
-                onChange={(e) =>
-                  updateField("entry_reason", e.target.value)
-                }
-              />
-            </label>
-
-            <label className="full-span">
-              Exit Reason
-              <textarea
-                placeholder="Why did you exit?"
-                value={trade.exit_reason}
-                onChange={(e) =>
-                  updateField("exit_reason", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Emotion
-              <input
-                type="text"
-                placeholder="Calm, nervous, confident..."
-                value={trade.emotion}
-                onChange={(e) =>
-                  updateField("emotion", e.target.value)
-                }
-              />
-            </label>
-
-            <label>
-              Mistake
-              <input
-                type="text"
-                placeholder="Optional"
-                value={trade.mistake}
-                onChange={(e) =>
-                  updateField("mistake", e.target.value)
-                }
-              />
-            </label>
-
-            <label className="full-span">
-              Lesson
-              <textarea
-                placeholder="What did you learn?"
-                value={trade.lesson}
-                onChange={(e) =>
-                  updateField("lesson", e.target.value)
-                }
-              />
-            </label>
-          </div>
-
-          {error && <div className="error-message">{error}</div>}
-
-          <div className="modal-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              className="primary-button"
-              disabled={saving}
-            >
-              {initialTrade ? "Update Simulated Trade" : "Save Simulated Trade"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 function Icon({ name, size = 20 }) {
   const paths = {
     arrowLeft: "M19 12H5m7 7-7-7 7-7",
@@ -767,6 +452,10 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const [showAnalyticsPage, setShowAnalyticsPage] = useState(false);
   const [showAnalyticsHub, setShowAnalyticsHub] = useState(false);
   const [showBacktestPage, setShowBacktestPage] = useState(false);
+  const [startingBalance, setStartingBalance] = useState(10000);
+  const [balanceDraft, setBalanceDraft] = useState("10000");
+  const [balanceSaving, setBalanceSaving] = useState(false);
+  const [balanceError, setBalanceError] = useState("");
 
   async function loadTrades() {
     setLoadingTrades(true);
@@ -787,6 +476,10 @@ const [loadingTrades, setLoadingTrades] = useState(true);
 
   useEffect(() => {
     loadTrades();
+    (async () => {
+      const { data } = await supabase.from("user_account_settings").select("starting_balance").eq("user_id", user.id).maybeSingle();
+      if (data?.starting_balance) { setStartingBalance(Number(data.starting_balance)); setBalanceDraft(String(data.starting_balance)); }
+    })();
   }, []);
 
   async function handleLogout() {
@@ -812,6 +505,15 @@ const [loadingTrades, setLoadingTrades] = useState(true);
     setSelectedTrade(null);
   }
 
+  async function saveStartingBalance(event) {
+    event.preventDefault();
+    const value = Number(balanceDraft);
+    if (!Number.isFinite(value) || value <= 0) return setBalanceError("Starting balance must be a positive number.");
+    setBalanceSaving(true); setBalanceError("");
+    const { error } = await supabase.from("user_account_settings").upsert({ user_id: user.id, starting_balance: value }, { onConflict: "user_id" });
+    if (error) setBalanceError(error.message); else setStartingBalance(value);
+    setBalanceSaving(false);
+  }
   const totalTrades = trades.length;
 
   const wins = trades.filter(
@@ -822,7 +524,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
     totalTrades > 0 ? Math.round((wins / totalTrades) * 100) : 0;
 
   const simulatedPL = trades.reduce(
-    (total, trade) => total + numericValue(trade.simulated_pnl),
+    (total, trade) => total + (normalizedTradePnL(trade) ?? 0),
     0
   );
 
@@ -835,7 +537,12 @@ const [loadingTrades, setLoadingTrades] = useState(true);
       : 0;
   const performanceMetrics = calculatePerformanceMetrics(trades);
   const equityTrades = filterTradesByPeriod(trades, equityPeriod);
-  const equityCurve = buildEquityCurve(equityTrades);
+  const equitySequence = calculateJournalTradeSequence(trades, startingBalance);
+  const firstEquityTrade = equityTrades[0];
+  const equityStartingBalance = firstEquityTrade
+    ? equitySequence.find((item) => item.trade.id === firstEquityTrade.id)?.balanceBefore ?? startingBalance
+    : startingBalance;
+  const equityCurve = buildEquityCurve(equityTrades, equityStartingBalance);
   const chartGeometry = getChartGeometry(equityCurve);
   const orderedTrades = sortTradesChronologically(equityTrades);
   const formatMoney = (value) =>
@@ -957,6 +664,8 @@ const [loadingTrades, setLoadingTrades] = useState(true);
               if (refreshedTrade) setSelectedTrade(refreshedTrade);
             }}
             initialTrade={selectedTrade}
+            trades={trades}
+            startingBalance={startingBalance}
           />
         )}
       </div>
@@ -999,6 +708,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
           </button>
         </section>
 
+        <section className="card account-balance-card"><div><p className="eyebrow">ACCOUNT BALANCE</p><h2>Simulated account</h2><div className="account-balance-metrics"><div><span>Starting Balance</span><strong>{formatMoney(startingBalance)}</strong></div><div><span>Current Balance</span><strong>{formatMoney(startingBalance + simulatedPL)}</strong></div><div><span>Total P/L</span><strong className={simulatedPL >= 0 ? "positive-text" : "negative-text"}>{simulatedPL >= 0 ? "+" : ""}{formatMoney(simulatedPL)}</strong></div><div><span>Total P/L %</span><strong>{startingBalance > 0 ? `${((simulatedPL / startingBalance) * 100).toFixed(2)}%` : "—"}</strong></div><div><span>Trades</span><strong>{totalTrades}</strong></div></div></div><form className="balance-settings-form" onSubmit={saveStartingBalance}><label>Starting balance<input type="number" min="0.01" step="0.01" value={balanceDraft} onChange={(event) => setBalanceDraft(event.target.value)} /></label><button className="secondary-button" type="submit" disabled={balanceSaving}>{balanceSaving ? "Saving..." : "Save balance"}</button>{balanceError && <p className="form-error">{balanceError}</p>}</form></section>
         <section className="stats-grid">
           <div className="card">
             <span>Total Trades</span>
@@ -1171,6 +881,8 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   }}
   onSaved={loadTrades}
   initialTrade={selectedTrade}
+  trades={trades}
+  startingBalance={startingBalance}
 />
 )}
     </div>
