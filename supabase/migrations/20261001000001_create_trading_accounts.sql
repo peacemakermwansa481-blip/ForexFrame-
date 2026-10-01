@@ -54,15 +54,29 @@ create trigger trades_account_owner_guard
 before insert or update of account_id, user_id on public.trades
 for each row execute function public.validate_trade_account_owner();
 
--- Create one deterministic Main Account per existing user, using the previous
--- user_account_settings balance when present and otherwise the former $10,000 default.
-insert into public.trading_accounts (user_id, name, starting_balance)
-select u.id, 'Main Account', coalesce(s.starting_balance, 10000)
-from auth.users u
-left join public.user_account_settings s on s.user_id = u.id
-where not exists (
-  select 1 from public.trading_accounts a where a.user_id = u.id
-);
+-- Create one deterministic Main Account per existing user. The inspected
+-- production project does not contain user_account_settings, so existing users
+-- are migrated with the former $10,000 default. If that legacy table exists in
+-- another environment, preserve its starting_balance without making this
+-- migration depend on the table being present.
+do $$
+begin
+  if to_regclass('public.user_account_settings') is not null then
+    execute $sql$
+      insert into public.trading_accounts (user_id, name, starting_balance)
+      select u.id, 'Main Account', coalesce(s.starting_balance, 10000)
+      from auth.users u
+      left join public.user_account_settings s on s.user_id = u.id
+      where not exists (select 1 from public.trading_accounts a where a.user_id = u.id)
+    $sql$;
+  else
+    insert into public.trading_accounts (user_id, name, starting_balance)
+    select u.id, 'Main Account', 10000
+    from auth.users u
+    where not exists (select 1 from public.trading_accounts a where a.user_id = u.id);
+  end if;
+end;
+$$;
 
 -- Preserve existing history by assigning each user's legacy trades to that user's
 -- deterministic Main Account. No trade is deleted or otherwise rewritten.
