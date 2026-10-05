@@ -26,6 +26,9 @@ import {
 } from "./performance";
 import { MockHistoricalDataProvider, ReplayController, TestMomentumStrategy, runBacktest } from "./backtesting";
 
+// Keep the backtesting implementation available for development while hiding
+// the unfinished feature from normal users until it is ready to re-enable.
+const BACKTESTING_ENABLED = false;
 const ADSENSE_SLOT = import.meta.env.VITE_ADSENSE_SLOT || "";
 
 const emptyTrade = {
@@ -620,7 +623,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
       day: "numeric",
     });
 
-  if (showBacktestPage) {
+  if (BACKTESTING_ENABLED && showBacktestPage) {
     return (
       <div className="app">
         <header className="topbar"><div><div className="logo">ForexFrame</div><div className="subtitle">Trading Journal</div></div><div className="profile-area"><span className="user-email">{user.email}</span><button className="profile" onClick={handleLogout}>{user.email?.charAt(0).toUpperCase() || "U"}</button></div></header>
@@ -931,11 +934,13 @@ const [loadingTrades, setLoadingTrades] = useState(true);
             <span className="launcher-copy"><strong>Analytics</strong><span>Open statistics, performance, psychology, and trade analysis</span></span>
             <span className="launcher-arrow">→</span>
           </button>
-          <button className="card backtest-launcher" type="button" onClick={() => setShowBacktestPage(true)}>
-            <span className="launcher-icon"><Icon name="chart" size={28} /></span>
-            <span className="launcher-copy"><strong>Backtesting</strong><span>Test strategies with simulated trades, separate from your journal</span></span>
-            <span className="launcher-arrow">→</span>
-          </button>
+          {BACKTESTING_ENABLED && (
+            <button className="card backtest-launcher" type="button" onClick={() => setShowBacktestPage(true)}>
+              <span className="launcher-icon"><Icon name="chart" size={28} /></span>
+              <span className="launcher-copy"><strong>Backtesting</strong><span>Test strategies with simulated trades, separate from your journal</span></span>
+              <span className="launcher-arrow">→</span>
+            </button>
+          )}
         </section>
 
         <AdSenseAd slot={ADSENSE_SLOT} />
