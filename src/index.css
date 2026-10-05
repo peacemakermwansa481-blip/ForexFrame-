@@ -1439,3 +1439,21 @@ label {
 .selected-account-callout span { color: #94a3b8; font-size: 12px; }
 .selected-account-callout small { color: #94a3b8; }
 @media (max-width: 720px) { .account-balance-card { flex-direction: column; }.account-selector-row { align-items: stretch; flex-direction: column; }.account-selector-row select { width: 100%; }.account-list-row { align-items: flex-start; flex-wrap: wrap; }.account-list-select { flex-basis: 100%; }.account-form { grid-template-columns: 1fr; } }
+
+.adsense-placement {
+  width: 100%;
+  max-width: 100%;
+  min-height: 90px;
+  margin: 24px auto 0;
+  overflow: hidden;
+  text-align: center;
+}
+.adsense-placement .adsbygoogle {
+  width: 100%;
+  min-height: 90px;
+  max-width: 100%;
+}
+@media (max-width: 720px) {
+  .adsense-placement { margin-top: 18px; min-height: 70px; }
+  .adsense-placement .adsbygoogle { min-height: 70px; }
+}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
+import AdSenseAd from "./AdSenseAd";
 import { supabase } from "./supabase";
 import {
   buildEquityCurve,
@@ -24,6 +25,8 @@ import {
   normalizedTradePnL,
 } from "./performance";
 import { MockHistoricalDataProvider, ReplayController, TestMomentumStrategy, runBacktest } from "./backtesting";
+
+const ADSENSE_SLOT = import.meta.env.VITE_ADSENSE_SLOT || "";
 
 const emptyTrade = {
   trade_date: new Date().toISOString().slice(0, 16),
@@ -934,6 +937,8 @@ const [loadingTrades, setLoadingTrades] = useState(true);
             <span className="launcher-arrow">→</span>
           </button>
         </section>
+
+        <AdSenseAd slot={ADSENSE_SLOT} />
       </main>
 
       {showModal && (
