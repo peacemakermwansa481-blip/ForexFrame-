@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import AdSenseAd from "./AdSenseAd";
+import { PublicPage, SiteFooter } from "./PublicPages";
 import { supabase } from "./supabase";
 import {
   buildEquityCurve,
@@ -30,6 +31,7 @@ import { MockHistoricalDataProvider, ReplayController, TestMomentumStrategy, run
 // the unfinished feature from normal users until it is ready to re-enable.
 const BACKTESTING_ENABLED = false;
 const ADSENSE_SLOT = import.meta.env.VITE_ADSENSE_SLOT || "";
+const PUBLIC_PATHS = ["/about", "/contact", "/privacy", "/terms"];
 
 const emptyTrade = {
   trade_date: new Date().toISOString().slice(0, 16),
@@ -153,6 +155,7 @@ function AuthScreen() {
             : "Already have an account? Log in"}
         </button>
       </div>
+      <SiteFooter />
     </div>
   );
 }
@@ -958,6 +961,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   account={selectedAccount}
 />
 )}
+      <SiteFooter />
     </div>
   );
 }
@@ -965,6 +969,13 @@ const [loadingTrades, setLoadingTrades] = useState(true);
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [path, setPath] = useState(() => window.location.pathname.replace(/\/+$/, "") || "/");
+
+  useEffect(() => {
+    const handlePathChange = () => setPath(window.location.pathname.replace(/\/+$/, "") || "/");
+    window.addEventListener("popstate", handlePathChange);
+    return () => window.removeEventListener("popstate", handlePathChange);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -980,6 +991,10 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  if (PUBLIC_PATHS.includes(path)) {
+    return <PublicPage path={path} />;
+  }
 
   if (loading) {
     return (
