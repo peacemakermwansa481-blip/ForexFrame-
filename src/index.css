@@ -1547,6 +1547,110 @@ label {
 .public-card-grid h2 {
   color: #60a5fa;
 }
+.public-hero-card h2 {
+  max-width: 700px;
+  font-size: clamp(24px, 4vw, 34px);
+  letter-spacing: -0.8px;
+}
+.section-kicker {
+  margin-bottom: 9px !important;
+  color: #60a5fa !important;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.4 !important;
+  text-transform: uppercase;
+}
+.public-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 28px;
+  margin-top: 22px;
+}
+.public-feature-grid h3 {
+  margin-bottom: 7px;
+  color: #f8fafc;
+  font-size: 16px;
+}
+.public-feature-grid p,
+.public-steps span {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.public-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+.public-actions a {
+  text-decoration: none;
+}
+.public-steps {
+  display: grid;
+  gap: 18px;
+  margin: 20px 0 0;
+  padding-left: 24px;
+}
+.public-steps li {
+  padding-left: 6px;
+  color: #cbd5e1;
+}
+.public-steps strong,
+.public-steps span {
+  display: block;
+}
+.public-steps strong {
+  margin-bottom: 4px;
+  color: #f8fafc;
+}
+.public-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+.public-callout {
+  border-color: rgba(20, 184, 166, 0.4);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(20, 26, 33, 0.95));
+}
+.public-list {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 22px;
+  padding-left: 20px;
+  color: #cbd5e1;
+  line-height: 1.65;
+}
+.contact-email {
+  display: inline-block;
+  margin: 14px 0 2px;
+  color: #7dd3fc !important;
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.contact-card .muted {
+  font-size: 13px;
+}
+.policy-card > h2 {
+  scroll-margin-top: 20px;
+}
+.policy-toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0 0 28px;
+  padding: 14px 16px;
+  border-left: 3px solid #14b8a6;
+  background: rgba(15, 23, 42, 0.55);
+}
+.policy-toc a {
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
 .policy-updated {
   margin-bottom: 22px;
   color: #64748b !important;
@@ -1619,6 +1723,7 @@ label {
   .public-main { width: min(100% - 28px, 920px); padding-top: 34px; }
   .public-card-grid { grid-template-columns: 1fr; gap: 0; }
   .public-card-grid > div + div { margin-top: 22px; }
+  .public-feature-grid, .public-two-column { grid-template-columns: 1fr; gap: 20px; }
   .site-footer-inner { width: min(100% - 28px, 1200px); align-items: flex-start; flex-direction: column; }
   .site-footer-links { justify-content: flex-start; }
 }
