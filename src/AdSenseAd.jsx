@@ -21,15 +21,26 @@ class AdSenseErrorBoundary extends Component {
 
 function AdSenseAdContent({ slot = "" }) {
   const adRef = useRef(null);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (!slot || !adRef.current) return undefined;
+    const adElement = adRef.current;
+    if (!slot || !adElement || initializedRef.current) return undefined;
+    if (adElement.dataset.adsenseInitialized === "true") {
+      initializedRef.current = true;
+      return undefined;
+    }
 
     try {
       window.adsbygoogle = window.adsbygoogle || [];
+      if (typeof window.adsbygoogle.push !== "function") return undefined;
+      initializedRef.current = true;
+      adElement.dataset.adsenseInitialized = "true";
       window.adsbygoogle.push({});
     } catch (error) {
       // Ad availability and script timing must never interrupt the journal UI.
+      initializedRef.current = false;
+      delete adElement.dataset.adsenseInitialized;
       console.warn("ForexFrame AdSense ad was unavailable", error);
     }
 

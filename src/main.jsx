@@ -30,7 +30,7 @@ import { MockHistoricalDataProvider, ReplayController, TestMomentumStrategy, run
 // Keep the backtesting implementation available for development while hiding
 // the unfinished feature from normal users until it is ready to re-enable.
 const BACKTESTING_ENABLED = false;
-const ADSENSE_SLOT = import.meta.env.VITE_ADSENSE_SLOT || "";
+const ADSENSE_SLOT = import.meta.env.VITE_ADSENSE_SLOT || "4979325431";
 const PUBLIC_PATHS = ["/about", "/contact", "/privacy", "/terms"];
 
 const emptyTrade = {
