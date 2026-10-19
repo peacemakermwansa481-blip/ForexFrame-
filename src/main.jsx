@@ -615,6 +615,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const equityCurve = buildEquityCurve(equityTrades, equityStartingBalance);
   const chartGeometry = getChartGeometry(equityCurve);
   const orderedTrades = sortTradesChronologically(equityTrades);
+  const canShowDashboardAd = Boolean(selectedAccount && !loadingTrades && !accountError && trades.length > 0);
   const formatMoney = (value) =>
     Number(value).toLocaleString(undefined, {
       minimumFractionDigits: 2,
@@ -946,7 +947,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
           )}
         </section>
 
-        <AdSenseAd slot={ADSENSE_SLOT} />
+        {canShowDashboardAd && <AdSenseAd slot={ADSENSE_SLOT} />}
       </main>
 
       {showModal && (
