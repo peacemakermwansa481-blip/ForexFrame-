@@ -18,10 +18,12 @@ export function SiteFooter() {
           <p>Trading journal and learning platform.</p>
         </div>
         <nav className="site-footer-links" aria-label="Information pages">
+          <a href="/academy">Academy</a>
           <a href="/about">About</a>
           <a href="/contact">Contact</a>
           <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms of Service</a>
+          <a href="/">Login / registration</a>
         </nav>
       </div>
     </footer>

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import AdSenseAd from "./AdSenseAd";
 import { PublicPage, SiteFooter } from "./PublicPages";
+import { AcademyPage } from "./Academy";
 import { supabase } from "./supabase";
 import {
   buildEquityCurve,
@@ -31,7 +32,17 @@ import { MockHistoricalDataProvider, ReplayController, TestMomentumStrategy, run
 // the unfinished feature from normal users until it is ready to re-enable.
 const BACKTESTING_ENABLED = false;
 const ADSENSE_SLOT = import.meta.env.VITE_ADSENSE_SLOT || "4979325431";
-const PUBLIC_PATHS = ["/about", "/contact", "/privacy", "/terms"];
+const ACADEMY_PATHS = [
+  "/academy",
+  "/academy/forex-market-structure",
+  "/academy/risk-management",
+  "/academy/trading-journal",
+  "/academy/trading-statistics",
+  "/academy/equity-curves",
+  "/academy/backtesting",
+  "/academy/trading-review",
+];
+const PUBLIC_PATHS = ["/about", "/contact", "/privacy", "/terms", ...ACADEMY_PATHS];
 
 const emptyTrade = {
   trade_date: new Date().toISOString().slice(0, 16),
@@ -994,6 +1005,7 @@ function App() {
   }, []);
 
   if (PUBLIC_PATHS.includes(path)) {
+    if (ACADEMY_PATHS.includes(path)) return <AcademyPage path={path} />;
     return <PublicPage path={path} />;
   }
 

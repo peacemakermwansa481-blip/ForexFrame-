@@ -3,6 +3,14 @@
     { "source": "/about", "destination": "/index.html" },
     { "source": "/contact", "destination": "/index.html" },
     { "source": "/privacy", "destination": "/index.html" },
-    { "source": "/terms", "destination": "/index.html" }
+    { "source": "/terms", "destination": "/index.html" },
+    { "source": "/academy", "destination": "/index.html" },
+    { "source": "/academy/forex-market-structure", "destination": "/index.html" },
+    { "source": "/academy/risk-management", "destination": "/index.html" },
+    { "source": "/academy/trading-journal", "destination": "/index.html" },
+    { "source": "/academy/trading-statistics", "destination": "/index.html" },
+    { "source": "/academy/equity-curves", "destination": "/index.html" },
+    { "source": "/academy/backtesting", "destination": "/index.html" },
+    { "source": "/academy/trading-review", "destination": "/index.html" }
   ]
 }
