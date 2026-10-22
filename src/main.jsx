@@ -44,6 +44,28 @@ const ACADEMY_PATHS = [
 ];
 const PUBLIC_PATHS = ["/about", "/contact", "/privacy", "/terms", ...ACADEMY_PATHS];
 
+const isAuthRequestFailure = (error) => Boolean(
+  error && (
+    error.code === "PGRST301" ||
+    error.code === "PGRST303" ||
+    error.status === 401 ||
+    /jwt|token|session|auth/i.test(error.message || "")
+  )
+);
+
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function runWithAuthRecovery(operation) {
+  let result = await operation();
+  if (!isAuthRequestFailure(result?.error)) return result;
+
+  await wait(1000);
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) return { data: null, error: refreshError };
+
+  return operation();
+}
+
 const emptyTrade = {
   trade_date: new Date().toISOString().slice(0, 16),
   instrument: "",
@@ -483,7 +505,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   const [accountError, setAccountError] = useState("");
 
   async function loadAccountSummaries() {
-    const { data, error } = await supabase.from("trades").select("account_id, simulated_pnl, outcome").eq("user_id", user.id);
+    const { data, error } = await runWithAuthRecovery(() => supabase.from("trades").select("account_id, simulated_pnl, outcome").eq("user_id", user.id));
     if (error) return;
     const summaries = {};
     (data || []).forEach((trade) => {
@@ -496,8 +518,8 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   }
 
   async function loadAccounts(preferredId = null) {
-    const { data, error } = await supabase.from("trading_accounts").select("*").eq("user_id", user.id).order("created_at", { ascending: true });
-    if (error) { setAccountError(error.message); return []; }
+    const { data, error } = await runWithAuthRecovery(() => supabase.from("trading_accounts").select("*").eq("user_id", user.id).order("created_at", { ascending: true }));
+    if (error) { setAccountError(`Unable to load your trading accounts: ${error.message}`); setLoadingTrades(false); return []; }
     let nextAccounts = data || [];
     if (nextAccounts.length === 0) {
       const { data: created, error: createError } = await supabase.from("trading_accounts").insert({ user_id: user.id, name: "Main Account", starting_balance: 10000 }).select().single();
@@ -513,11 +535,18 @@ const [loadingTrades, setLoadingTrades] = useState(true);
   async function loadTrades(accountId = selectedAccountId) {
     setLoadingTrades(true);
     if (!accountId) { setTrades([]); setLoadingTrades(false); return []; }
-    const { data, error } = await supabase.from("trades").select("*").eq("user_id", user.id).eq("account_id", accountId).order("trade_date", { ascending: false });
+    const { data, error } = await runWithAuthRecovery(() => supabase.from("trades").select("*").eq("user_id", user.id).eq("account_id", accountId).order("trade_date", { ascending: false }));
     if (!error) setTrades(data || []);
-    else setAccountError(error.message);
+    else setAccountError(`Unable to load trades for this account: ${error.message}`);
     setLoadingTrades(false);
     return data || [];
+  }
+
+  async function retryJournalLoading() {
+    setAccountError("");
+    const nextAccounts = await loadAccounts(selectedAccountId || null);
+    await loadAccountSummaries();
+    if (nextAccounts.length) await loadTrades(nextAccounts.find((account) => account.id === selectedAccountId)?.id || nextAccounts[0].id);
   }
 
   useEffect(() => {
@@ -790,7 +819,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
           </button>
         </section>
 
-        <section className="card account-balance-card"><div className="account-balance-main"><p className="eyebrow">ACTIVE TRADING ACCOUNT</p><div className="account-selector-row"><h2>{selectedAccount?.name || "No account selected"}</h2><select aria-label="Select trading account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></div><div className="account-balance-metrics"><div><span>Starting Balance</span><strong>{formatMoney(startingBalance)}</strong></div><div><span>Current Balance</span><strong>{formatMoney(startingBalance + simulatedPL)}</strong></div><div><span>Total P/L</span><strong className={simulatedPL >= 0 ? "positive-text" : "negative-text"}>{simulatedPL >= 0 ? "+" : ""}{formatMoney(simulatedPL)}</strong></div><div><span>Total P/L %</span><strong>{startingBalance > 0 ? `${((simulatedPL / startingBalance) * 100).toFixed(2)}%` : "—"}</strong></div><div><span>Trades</span><strong>{totalTrades}</strong></div></div></div><div className="account-actions"><button className="secondary-button" type="button" onClick={() => openAccountEditor(selectedAccount)} disabled={!selectedAccount}>Edit Account</button><button className="secondary-button" type="button" onClick={() => openAccountEditor()}>+ Add Account</button>{accountError && <p className="form-error">{accountError}</p>}</div></section>
+        <section className="card account-balance-card"><div className="account-balance-main"><p className="eyebrow">ACTIVE TRADING ACCOUNT</p><div className="account-selector-row"><h2>{selectedAccount?.name || "No account selected"}</h2><select aria-label="Select trading account" value={selectedAccountId} onChange={(event) => setSelectedAccountId(event.target.value)}>{accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></div><div className="account-balance-metrics"><div><span>Starting Balance</span><strong>{formatMoney(startingBalance)}</strong></div><div><span>Current Balance</span><strong>{formatMoney(startingBalance + simulatedPL)}</strong></div><div><span>Total P/L</span><strong className={simulatedPL >= 0 ? "positive-text" : "negative-text"}>{simulatedPL >= 0 ? "+" : ""}{formatMoney(simulatedPL)}</strong></div><div><span>Total P/L %</span><strong>{startingBalance > 0 ? `${((simulatedPL / startingBalance) * 100).toFixed(2)}%` : "—"}</strong></div><div><span>Trades</span><strong>{totalTrades}</strong></div></div></div><div className="account-actions"><button className="secondary-button" type="button" onClick={() => openAccountEditor(selectedAccount)} disabled={!selectedAccount}>Edit Account</button><button className="secondary-button" type="button" onClick={() => openAccountEditor()}>+ Add Account</button>{accountError && <><p className="form-error">{accountError}</p><button className="secondary-button" type="button" onClick={retryJournalLoading}>Retry loading journal</button></>}</div></section>
         <section className="card account-management-card"><div className="card-header"><div><p className="eyebrow">ACCOUNT MANAGEMENT</p><h2>My Trading Accounts</h2></div><button className="secondary-button" type="button" onClick={() => openAccountEditor()}>+ Add Account</button></div><div className="account-list">{accounts.map((account) => { const summary = accountSummaries[account.id] || { trades: 0, pnl: 0 }; return <div className={`account-list-row ${account.id === selectedAccountId ? "active" : ""}`} key={account.id}><button type="button" className="account-list-select" onClick={() => setSelectedAccountId(account.id)}><strong>{account.name}</strong><span>Balance: {formatMoney(Number(account.starting_balance) + summary.pnl)} · {summary.trades} trade{summary.trades === 1 ? "" : "s"}</span></button><button className="icon-text-button" type="button" onClick={() => openAccountEditor(account)}>Edit</button><button className="icon-text-button danger" type="button" onClick={() => deleteAccount(account)}>Delete</button></div>; })}</div></section>
         {accountForm && <div className="card account-form-card"><div className="card-header"><div><p className="eyebrow">ACCOUNT SETTINGS</p><h2>{accountForm.id ? "Edit Account" : "Add Account"}</h2></div><button className="close-button" type="button" onClick={() => setAccountForm(null)}>Close</button></div><form className="account-form" onSubmit={saveAccount}><label>Account name<input type="text" value={accountForm.name} onChange={(event) => setAccountForm((current) => ({ ...current, name: event.target.value }))} placeholder="FundedNext Account" required /></label><label>Starting balance<input type="number" min="0.01" step="0.01" value={accountForm.starting_balance} onChange={(event) => setAccountForm((current) => ({ ...current, starting_balance: event.target.value }))} required /></label>{accountError && <p className="form-error">{accountError}</p>}<div className="modal-actions"><button className="secondary-button" type="button" onClick={() => setAccountForm(null)}>Cancel</button><button className="primary-button" type="submit" disabled={balanceSaving}>{balanceSaving ? "Saving..." : "Save Account"}</button></div></form></div>}
         <section className="stats-grid">
@@ -981,6 +1010,7 @@ const [loadingTrades, setLoadingTrades] = useState(true);
 function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState("");
   const [path, setPath] = useState(() => window.location.pathname.replace(/\/+$/, "") || "/");
 
   useEffect(() => {
@@ -990,18 +1020,26 @@ function App() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    let active = true;
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      if (error) setSessionError(`Unable to restore your session: ${error.message}`);
+      setSession(data?.session || null);
       setLoading(false);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSessionError("");
       setSession(newSession);
+      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (PUBLIC_PATHS.includes(path)) {
@@ -1014,6 +1052,16 @@ function App() {
       <div className="loading-screen">
         <div className="logo">ForexFrame</div>
         <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (sessionError) {
+    return (
+      <div className="loading-screen">
+        <div className="logo">ForexFrame</div>
+        <p className="form-error">{sessionError}</p>
+        <a className="primary-button" href="/?auth=login">Return to login</a>
       </div>
     );
   }
