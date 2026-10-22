@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import AdSenseAd from "./AdSenseAd";
-import { PublicPage, SiteFooter } from "./PublicPages";
+import { PublicHomePage, PublicPage, SiteFooter } from "./PublicPages";
 import { AcademyPage } from "./Academy";
 import { supabase } from "./supabase";
 import {
@@ -69,8 +69,8 @@ const emptyTrade = {
 
 
 
-function AuthScreen() {
-  const [mode, setMode] = useState("login");
+function AuthScreen({ initialMode = "login" }) {
+  const [mode, setMode] = useState(initialMode === "signup" ? "signup" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1018,7 +1018,11 @@ function App() {
     );
   }
 
-  return session ? <Dashboard user={session.user} /> : <AuthScreen />;
+  if (session) return <Dashboard user={session.user} />;
+  const authMode = new URLSearchParams(window.location.search).get("auth");
+  return authMode === "login" || authMode === "signup"
+    ? <AuthScreen initialMode={authMode} />
+    : <PublicHomePage />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

@@ -23,7 +23,7 @@ export function SiteFooter() {
           <a href="/contact">Contact</a>
           <a href="/privacy">Privacy Policy</a>
           <a href="/terms">Terms of Service</a>
-          <a href="/">Login / registration</a>
+          <a href="/?auth=login">Login / registration</a>
         </nav>
       </div>
     </footer>
@@ -45,8 +45,8 @@ function PublicLayout({ eyebrow, title, intro, children }) {
           <span className="logo">ForexFrame</span>
           <span className="subtitle">Trading Journal</span>
         </a>
-        <a className="secondary-button public-header-action" href="/">
-          Open ForexFrame
+        <a className="secondary-button public-header-action" href="/?auth=login">
+          Log in or register
         </a>
       </header>
       <main className="public-main">
@@ -74,6 +74,98 @@ function PublicLinks({ links }) {
   );
 }
 
+const HOME_ARTICLES = [
+  ["Forex Market Structure for Beginners", "/academy/forex-market-structure"],
+  ["Risk Management Before Trade Entry", "/academy/risk-management"],
+  ["How to Keep a Useful Trading Journal", "/academy/trading-journal"],
+  ["How to Read Trading Statistics", "/academy/trading-statistics"],
+];
+
+export function PublicHomePage() {
+  return (
+    <div className="public-site homepage-site">
+      <header className="public-header homepage-header">
+        <a className="public-brand" href="/" aria-label="ForexFrame home">
+          <span className="logo">ForexFrame</span>
+          <span className="subtitle">Trading Journal</span>
+        </a>
+        <nav className="homepage-nav" aria-label="Homepage navigation">
+          <a href="/academy">Academy</a>
+          <a href="/?auth=login">Log in</a>
+          <a className="secondary-button public-header-action" href="/?auth=signup">Create an account</a>
+        </nav>
+      </header>
+      <main className="homepage-main">
+        <section className="homepage-hero">
+          <div>
+            <p className="eyebrow">FOREXFRAME TRADING JOURNAL</p>
+            <h1>Understand your trading. Learn from every trade.</h1>
+            <p className="homepage-hero-copy">ForexFrame helps traders organize their trading records, review performance statistics, and examine their trading decisions through a structured journal.</p>
+            <nav className="public-actions" aria-label="Get started">
+              <a className="primary-button" href="/?auth=signup">Create an account</a>
+              <a className="secondary-button" href="/academy">Explore the Trading Academy</a>
+            </nav>
+          </div>
+          <aside className="homepage-hero-note" aria-label="ForexFrame overview">
+            <span className="section-kicker">A clearer review loop</span>
+            <strong>Record the plan. Review the result. Notice the pattern.</strong>
+            <span>Built for recorded, simulated trading history—not live execution.</span>
+          </aside>
+        </section>
+
+        <section className="homepage-section homepage-problem" aria-labelledby="problem-heading">
+          <div className="homepage-section-heading"><p className="section-kicker">Why keep a record?</p><h2 id="problem-heading">Memory is useful for a story. A journal is better for a pattern.</h2></div>
+          <div className="homepage-two-column">
+            <p>After a trade closes, it is easy to remember the outcome more clearly than the original decision. Consistent records preserve what was known, what was planned, and what actually happened.</p>
+            <ul className="homepage-checklist">
+              <li>Review decisions after trades close.</li>
+              <li>Compare recurring patterns in recorded results.</li>
+              <li>Document mistakes and successes without rewriting the past.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className="homepage-section" aria-labelledby="features-heading">
+          <div className="homepage-section-heading"><p className="section-kicker">The ForexFrame workflow</p><h2 id="features-heading">Tools for structured review</h2></div>
+          <div className="homepage-feature-grid">
+            <div><h3>Organize accounts</h3><p>Keep separate trading accounts and starting balances organized in one journal.</p></div>
+            <div><h3>Record trades</h3><p>Capture trade details, outcomes, risk measures, reasons, emotions, mistakes, and lessons.</p></div>
+            <div><h3>Review performance</h3><p>View recorded-trade statistics, recent trades, and an equity curve based on your journal history.</p></div>
+            <div><h3>Explore analytics</h3><p>Compare relevant recorded data such as instruments, strategies, timeframes, directions, and outcomes.</p></div>
+          </div>
+        </section>
+
+        <section className="homepage-section homepage-steps-section" aria-labelledby="steps-heading">
+          <div className="homepage-section-heading"><p className="section-kicker">How it works</p><h2 id="steps-heading">Start with a record, then review it</h2></div>
+          <ol className="homepage-steps">
+            <li><span>01</span><div><strong>Create an account</strong><p>Use the existing registration flow to create a private journal.</p></div></li>
+            <li><span>02</span><div><strong>Set up a trading account</strong><p>Choose the account and starting balance for the records you want to review.</p></div></li>
+            <li><span>03</span><div><strong>Record trades</strong><p>Enter the details and observations that matter to your process.</p></div></li>
+            <li><span>04</span><div><strong>Review the history</strong><p>Use the available statistics, equity curve, recent trades, and analytics to ask better questions.</p></div></li>
+          </ol>
+        </section>
+
+        <section className="homepage-section homepage-academy-section" aria-labelledby="academy-heading">
+          <div className="homepage-section-heading"><div><p className="section-kicker">ForexFrame Trading Academy</p><h2 id="academy-heading">Learn before you log in</h2></div><a className="secondary-button" href="/academy">View all Academy guides</a></div>
+          <p className="homepage-section-intro">The Academy is open to everyone. Explore practical educational material about market structure, risk, journaling, and performance analysis without creating an account.</p>
+          <div className="homepage-academy-grid">{HOME_ARTICLES.map(([title, href], index) => <a href={href} key={href}><span>0{index + 1}</span><strong>{title}</strong><small>Read the guide →</small></a>)}</div>
+        </section>
+
+        <section className="homepage-section homepage-limits" aria-labelledby="limits-heading">
+          <p className="section-kicker">Clear limits</p><h2 id="limits-heading">A journal and analysis tool, not a broker</h2>
+          <p>ForexFrame does not connect to brokers or execute trades. Its analytics depend on the records you enter, and historical performance does not guarantee future results. Trading involves financial risk.</p>
+        </section>
+
+        <section className="homepage-final-cta" aria-labelledby="cta-heading">
+          <p className="section-kicker">Build a better review habit</p><h2 id="cta-heading">Make your next review easier to understand.</h2>
+          <div className="public-actions"><a className="primary-button" href="/?auth=signup">Create an account</a><a className="secondary-button" href="/?auth=login">Log in</a><a className="secondary-button" href="/academy">Explore the Academy</a></div>
+        </section>
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
 function AboutPage() {
   return (
     <PublicLayout
@@ -92,7 +184,7 @@ function AboutPage() {
         </p>
         <PublicLinks
           links={[
-            { href: "/", label: "Create an account", primary: true },
+            { href: "/?auth=signup", label: "Create an account", primary: true },
             { href: "/contact", label: "Contact us" },
           ]}
         />
@@ -150,7 +242,7 @@ function AboutPage() {
         <p>ForexFrame is a record-keeping and analytical tool, not financial advice and not a guarantee of investment outcomes. Trading, including forex trading, involves financial risk. Make your own decisions and consider obtaining independent professional advice where appropriate.</p>
         <PublicLinks
           links={[
-            { href: "/", label: "Log in or register", primary: true },
+            { href: "/?auth=login", label: "Log in or register", primary: true },
             { href: "/privacy", label: "Read the Privacy Policy" },
           ]}
         />
